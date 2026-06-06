@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shiryo-coder"
+version = "0.1.0"
+description = "史料テキスト分析統合ソフトウェア（Shiryō-Coder / HistoryQDA）"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "TBD" }
+authors = [{ name = "Shiryō-Coder Project" }]
+keywords = ["QDA", "OCR", "history", "qualitative-analysis", "japanese"]
+
+# 雛形段階では GUI と DB のみを必須依存とし、
+# OCR / NLP など重量級の依存はオプション extras に分離する。
+dependencies = [
+    "PySide6>=6.6",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+ocr = [
+    "opencv-python-headless>=4.9",
+    "pytesseract>=0.3.10",
+    "pillow>=10.0",
+    "pypdfium2>=4.0",
+]
+nlp = [
+    "spacy>=3.7",
+    "sudachipy>=0.6",
+    "sudachidict-core>=20240109",
+]
+viz = [
+    "networkx>=3.2",
+    "pyvis>=0.3.2",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+    "mypy>=1.9",
+]
+
+[project.scripts]
+shiryo-coder = "shiryo_coder.app:main"
+
+[tool.setuptools.packages.find]
+include = ["shiryo_coder*"]
+
+[tool.setuptools.package-data]
+shiryo_coder = ["db/schema.sql"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

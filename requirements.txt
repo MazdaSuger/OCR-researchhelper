@@ -1,0 +1,5 @@
+# 雛形段階のコア依存（GUI + DB）。
+# OCR / NLP / 可視化など重量級の依存は pyproject.toml の optional-dependencies
+# （extras: ocr, nlp, viz）を参照してください。
+PySide6>=6.6
+PyYAML>=6.0
