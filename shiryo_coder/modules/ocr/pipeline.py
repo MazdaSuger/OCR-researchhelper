@@ -1,0 +1,163 @@
+"""OCR 取り込みパイプライン: 入力 → 前処理 → OCR → `.md` / DB。
+
+仕様書 3.1 の取り込みワークフローを 1 本のオーケストレーションにまとめる。
+GUI からはこの `OcrPipeline` を `worker` 経由でバックグラウンド実行する。
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Callable
+
+from shiryo_coder.modules.ocr.detect import detect_language, detect_orientation
+from shiryo_coder.modules.ocr.engines.base import OcrEngine
+from shiryo_coder.modules.ocr.inputs import enumerate_pages
+from shiryo_coder.modules.ocr.markdown_writer import write_markdown
+from shiryo_coder.modules.ocr.preprocess import PreprocessConfig, preprocess
+from shiryo_coder.modules.ocr.result import OcrResult
+
+# (current_page, total_pages) を受け取る進捗コールバック
+ProgressCallback = Callable[[int, int], None]
+
+# DB の document テーブルに直接対応する列
+_DOCUMENT_COLUMNS = (
+    "title", "author", "year", "era", "language",
+    "script", "source_image", "ocr_engine", "confidence",
+)
+
+
+@dataclass
+class IngestedDocument:
+    """1 入力（複数ページ可）の取り込み結果。"""
+
+    title: str
+    body: str
+    metadata: dict[str, Any]
+    pages: list[OcrResult] = field(default_factory=list)
+    source: str | None = None
+
+    @property
+    def confidence(self) -> float | None:
+        confs = [p.confidence for p in self.pages if p.confidence is not None]
+        return sum(confs) / len(confs) if confs else None
+
+
+@dataclass
+class OcrPipeline:
+    """OCR 取り込みのオーケストレータ。"""
+
+    engine: OcrEngine
+    preprocess_config: PreprocessConfig = field(default_factory=PreprocessConfig)
+    pdf_dpi: int = 200
+    page_separator: str = "\n\n"
+
+    def ingest(
+        self,
+        path: Path | str,
+        *,
+        title: str | None = None,
+        language: str | None = None,
+        vertical: bool | None = None,
+        era: str | None = None,
+        author: str | None = None,
+        year: int | None = None,
+        metadata: dict[str, Any] | None = None,
+        progress: ProgressCallback | None = None,
+    ) -> IngestedDocument:
+        """入力を OCR し、メタデータ付きの取り込み結果を返す。"""
+        path = Path(path)
+        pages = enumerate_pages(path, pdf_dpi=self.pdf_dpi)
+        if not pages:
+            raise ValueError(f"OCR 対象のページがありません: {path}")
+
+        total = len(pages)
+        results: list[OcrResult] = []
+        resolved_lang = language
+        resolved_vertical = vertical
+
+        for i, page in enumerate(pages):
+            image = page.load()
+            processed = preprocess(image, self.preprocess_config)
+
+            # 先頭ページで言語/方向を自動判定（明示指定がない場合）
+            if i == 0 and (resolved_lang is None or resolved_vertical is None):
+                osd = detect_orientation(processed)
+                if resolved_lang is None and osd.language != "und":
+                    resolved_lang = osd.language
+                if resolved_vertical is None:
+                    resolved_vertical = False  # 縦書き確定判定はユーザー確認に委ねる
+
+            result = self.engine.recognize(
+                processed,
+                vertical=bool(resolved_vertical),
+                language=resolved_lang,
+            )
+            results.append(result)
+            if progress is not None:
+                progress(i + 1, total)
+
+        body = self.page_separator.join(r.text for r in results).strip()
+        if resolved_lang is None:
+            resolved_lang = detect_language(body)
+
+        doc = IngestedDocument(
+            title=title or path.stem,
+            body=body,
+            metadata={},
+            pages=results,
+            source=str(path),
+        )
+        doc.metadata = {
+            "title": doc.title,
+            "author": author,
+            "year": year,
+            "era": era,
+            "language": resolved_lang,
+            "script": "vertical" if resolved_vertical else "horizontal",
+            "source_image": str(path),
+            "ocr_engine": self.engine.name,
+            "confidence": round(doc.confidence, 4) if doc.confidence is not None else None,
+            **(metadata or {}),
+        }
+        return doc
+
+    def save_markdown(
+        self, doc: IngestedDocument, out_path: Path | str, *, heading: str = "本文"
+    ) -> Path:
+        """取り込み結果を `.md`（YAML Front Matter 付き）として書き出す。"""
+        return write_markdown(out_path, doc.metadata, doc.body, heading=heading)
+
+    def persist(self, db, project_id: int, doc: IngestedDocument) -> int:
+        """取り込み結果を document テーブルに 1 行として保存し、その id を返す。"""
+        meta = dict(doc.metadata)
+        columns = {k: meta.pop(k, None) for k in _DOCUMENT_COLUMNS}
+        extras = {k: v for k, v in meta.items() if v is not None}
+        row = db.conn.execute(
+            """
+            INSERT INTO document(
+                project_id, title, body, file_path,
+                author, year, era, language, script,
+                source_image, ocr_engine, confidence, metadata_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            RETURNING id
+            """,
+            (
+                project_id,
+                columns["title"] or doc.title,
+                doc.body,
+                doc.source,
+                columns["author"],
+                columns["year"],
+                columns["era"],
+                columns["language"],
+                columns["script"],
+                columns["source_image"],
+                columns["ocr_engine"],
+                columns["confidence"],
+                json.dumps(extras, ensure_ascii=False) if extras else None,
+            ),
+        ).fetchone()
+        db.conn.commit()
+        return int(row["id"])

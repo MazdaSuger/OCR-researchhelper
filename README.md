@@ -58,6 +58,24 @@ python -m shiryo_coder
 
 初回起動時に `~/.shiryo_coder/shiryo.db` が作成され、スキーマが適用されます。
 
+## OCR 取り込み（GUI なし）
+
+OCR 取り込みモジュール（仕様書 3.1）はヘッドレスでも実行できます。
+
+```bash
+# 依存（ローカル OCR）をインストール
+pip install -e ".[ocr]"
+# Tesseract 本体と言語データも別途必要（例: apt install tesseract-ocr tesseract-ocr-jpn）
+
+# 画像 / PDF / ZIP / ディレクトリを取り込み、.md（YAML Front Matter 付き）を出力
+python -m shiryo_coder ingest path/to/scan.png --language ja --out doc.md
+python -m shiryo_coder ingest path/to/scans.pdf --vertical   # 縦書き（PSM 5）
+```
+
+対応エンジン: `tesseract`（実装済み・ローカル）／ `ndlocr_lite`・`google_vision`・`vision_llm`
+（インターフェース足場。SDK・認証情報・モデルの導入で有効化）。利用可否は
+`shiryo_coder.modules.ocr.available_engines()` で確認できます。
+
 ## テスト
 
 ```bash
