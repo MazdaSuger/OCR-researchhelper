@@ -148,6 +148,14 @@ def test_tesseract_engine_limits_openmp_for_parallelism():
     assert os.environ.get("OMP_THREAD_LIMIT") == "1"
 
 
+def test_bundled_tesseract_config_noop_when_not_frozen():
+    # 非凍結環境（通常実行）では同梱 tesseract 設定は何もしない
+    from shiryo_coder.modules.ocr.engines import tesseract as tess
+
+    tess._configure_bundled.cache_clear()
+    assert tess._configure_bundled() is None
+
+
 # -- 入力の列挙 -----------------------------------------------------------------
 def test_enumerate_single_image(english_png):
     from shiryo_coder.modules.ocr.inputs import enumerate_pages

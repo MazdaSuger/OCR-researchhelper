@@ -252,13 +252,21 @@ PyInstaller で `.app` を作り、DMG に固めます。GitHub Actions
 ローカル（macOS）で手動ビルドする場合:
 
 ```bash
-pip install -e ".[ocr,nlp,viz,export]" pyinstaller   # 必要な extras を選択
+brew install tesseract tesseract-lang dylibbundler          # OCR 同梱用
+pip install -e ".[ocr,nlp,viz,export]" pyinstaller
+bash packaging/make_icon.sh                                  # icon.png → .icns
 pyinstaller --noconfirm --clean packaging/Shiryo-Coder.spec
-bash packaging/make_dmg.sh Shiryo-Coder              # dist/Shiryo-Coder.dmg
+bash packaging/bundle_tesseract.sh dist/Shiryo-Coder.app     # tesseract + 言語データ同梱
+bash packaging/make_dmg.sh Shiryo-Coder                      # dist/Shiryo-Coder.dmg
 ```
 
-`packaging/Shiryo-Coder.spec` は `schema.sql` の同梱や、導入済みのオプション依存
-（Sudachi 辞書等）の収集を行います。OCR を使う場合は別途 `tesseract` 本体が必要です。
+- `packaging/Shiryo-Coder.spec` … `schema.sql` の同梱、導入済みオプション依存
+  （Sudachi 辞書等）の収集、`.icns` アイコンの設定、`.app` 生成。
+- `packaging/bundle_tesseract.sh` … `tesseract` 本体・依存 dylib（dylibbundler で
+  install_name を `@executable_path/../libs` に修正）・`tessdata`（jpn/jpn_vert/osd 等）を
+  `.app` 内に同梱。アプリ側は凍結環境を検知して同梱 tesseract を自動利用するため、
+  **利用者は別途 tesseract をインストール不要**。
+- アイコンは `packaging/icon.png`（白・オレンジ・黒で「史」）を元に生成。
 
 ## テスト
 

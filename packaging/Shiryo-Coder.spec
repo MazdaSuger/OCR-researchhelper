@@ -15,6 +15,10 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 ROOT = os.path.dirname(SPECPATH)          # リポジトリ直下
 ENTRY = os.path.join(SPECPATH, "entry.py")
 
+# アイコン（make_icon.sh で生成。無ければ既定アイコン）
+_icns = os.path.join(SPECPATH, "Shiryo-Coder.icns")
+ICON = _icns if os.path.exists(_icns) else None
+
 # 必須の同梱データ（importlib.resources 経由で参照される）
 datas = [(os.path.join(ROOT, "shiryo_coder", "db", "schema.sql"), "shiryo_coder/db")]
 hiddenimports = ["shiryo_coder"]
@@ -62,7 +66,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon=ICON,
 )
 coll = COLLECT(
     exe,
@@ -79,7 +83,7 @@ if sys.platform == "darwin":
     app = BUNDLE(
         coll,
         name="Shiryo-Coder.app",
-        icon=None,
+        icon=ICON,
         bundle_identifier="jp.shiryo.coder",
         version="0.1.0",
         info_plist={

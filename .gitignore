@@ -23,6 +23,11 @@ htmlcov/
 *.shiryo
 .shiryo_coder/
 
+# Packaging artifacts (icon.png はソースとしてコミット)
+packaging/*.icns
+packaging/*.iconset/
+*.dmg
+
 # OS / editor
 .DS_Store
 Thumbs.db

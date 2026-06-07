@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import os
 import shutil
+import sys
+from functools import lru_cache
+from pathlib import Path
 
 from shiryo_coder.modules.ocr.engines.base import EngineUnavailable, OcrEngine
 from shiryo_coder.modules.ocr.result import BoundingBox, OcrResult, OcrWord
@@ -16,6 +19,33 @@ from shiryo_coder.modules.ocr.result import BoundingBox, OcrResult, OcrWord
 # スレッド過剰割り当てで激しく遅くなる。各プロセスを単一スレッド化して健全に並列化する。
 # （tesseract 公式が推奨する並列化時の設定）
 os.environ.setdefault("OMP_THREAD_LIMIT", "1")
+
+
+@lru_cache(maxsize=1)
+def _configure_bundled() -> str | None:
+    """凍結 .app に同梱された tesseract を pytesseract に設定する。
+
+    PyInstaller でビルドした macOS アプリでは、bundle_tesseract.sh が
+    `Contents/MacOS/tesseract` と `Contents/Resources/tessdata` を配置する。
+    非凍結環境ではすぐに None を返す（システムの tesseract を使う）。
+    """
+    if not getattr(sys, "frozen", False):
+        return None
+    exe_dir = Path(sys.executable).resolve().parent      # .../Contents/MacOS
+    contents = exe_dir.parent
+    for candidate in (exe_dir / "tesseract", contents / "Resources" / "tesseract"):
+        if candidate.exists():
+            try:
+                import pytesseract
+
+                pytesseract.pytesseract.tesseract_cmd = str(candidate)
+            except Exception:
+                pass
+            resources = contents / "Resources"
+            if (resources / "tessdata").is_dir():
+                os.environ.setdefault("TESSDATA_PREFIX", str(resources))
+            return str(candidate)
+    return None
 
 
 def _to_pil(image):
@@ -47,11 +77,12 @@ class Tesseract5Engine(OcrEngine):
 
     # -- 可用性 ----------------------------------------------------------------
     def is_available(self) -> bool:
-        if shutil.which("tesseract") is None:
-            return False
         try:
             import pytesseract  # noqa: F401
         except ImportError:
+            return False
+        # 同梱 tesseract（凍結アプリ）があればそれを使う。無ければシステムを探す。
+        if _configure_bundled() is None and shutil.which("tesseract") is None:
             return False
         return True
 
@@ -78,6 +109,7 @@ class Tesseract5Engine(OcrEngine):
         language: str | None = None,
     ) -> OcrResult:
         self.ensure_available()
+        _configure_bundled()
         import pytesseract
 
         pil = _to_pil(image)
