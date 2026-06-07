@@ -6,7 +6,7 @@ import sqlite3
 from importlib import resources
 from pathlib import Path
 
-SCHEMA_VERSION = "3"
+SCHEMA_VERSION = "4"
 
 # 英語系言語（unicode61 索引へ振り分ける）。それ以外は trigram。
 _LATIN_LANGS = ("en", "eng", "english")

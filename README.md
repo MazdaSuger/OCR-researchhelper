@@ -176,6 +176,22 @@ API: `shiryo_coder.modules.cooccurrence`（`CooccurrenceRepository` /
 API: `shiryo_coder.modules.sentiment`（`SentimentAnalyzer` / `SentimentDictionary` /
 `SentimentRepository` / `LexiconRepository` / `OldToNewNormalizer`）。
 
+## 共同作業（仕様書 3.7）
+
+メニュー「共同作業」で、研究室共有のための運用機能を提供します。
+
+- **アカウント管理＋役割権限**: 管理者 / コーダー / 閲覧者。閲覧者は読み取りのみ、
+  承認・アカウント管理は管理者のみ、といった操作権限を役割で制御。
+- **変更履歴**: 誰がいつどのセグメント・コードに何をしたかを `audit_log` に記録。
+- **承認ワークフロー**: 「下書き(draft) → 主任承認(reviewed) → 確定(confirmed)」の
+  三段階。承認・確定は管理者のみ実行可能。
+- **ロック方式**: `document_lock` による同時編集の排他制御（取得/解放）。
+- **差分共有（ファイル共有方式）**: コーディングを名前ベースの可搬レコードへ
+  export し、別 DB へ import して統合。状態が食い違う箇所はコンフリクトとして報告。
+
+API: `shiryo_coder.modules.collaboration`（`AccountRepository` / `AuditRepository` /
+`ApprovalWorkflow` / `LockRepository` / `export_codings` / `import_codings`）。
+
 ## テスト
 
 ```bash

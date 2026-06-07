@@ -77,6 +77,11 @@ class MainWindow(QMainWindow):
         sentiment_action.triggered.connect(self.open_sentiment)
         analysis_menu.addAction(sentiment_action)
 
+        collab_menu = menubar.addMenu("共同作業(&T)")
+        collab_action = QAction("アカウント・承認・履歴・ロック…", self)
+        collab_action.triggered.connect(self.open_collaboration)
+        collab_menu.addAction(collab_action)
+
         for label in ("エクスポート(&E)", "ヘルプ(&H)"):
             menubar.addMenu(label)
 
@@ -186,6 +191,18 @@ class MainWindow(QMainWindow):
         window.resize(820, 620)
         window.show()
         self._reliability_window = window
+        return panel
+
+    def open_collaboration(self) -> "object":
+        from shiryo_coder.ui.collaboration import CollaborationPanel
+
+        window = QMainWindow(self)
+        window.setWindowTitle("共同作業")
+        panel = CollaborationPanel(self.db, self.project_id)
+        window.setCentralWidget(panel)
+        window.resize(820, 640)
+        window.show()
+        self._collab_window = window
         return panel
 
     def open_sentiment(self) -> "object":

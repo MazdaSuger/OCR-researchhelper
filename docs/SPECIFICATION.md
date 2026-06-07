@@ -187,5 +187,5 @@ QualCoder の File 一覧を拡張し、史料カタログとして機能:
 | 3.4 センチメント | `shiryo_coder/modules/sentiment/`, `shiryo_coder/ui/sentiment/` | ✅ 評価極性辞書（高村/東北大/VADER 形式・内蔵シード・カスタム史料辞書）・旧字旧仮名正規化・辞書ベース解析（最長一致＋否定反転、形態素解析器は差替可）・単位別極性（文/段落/セグメント/全体）・年代別時系列・コード別分布 |
 | 3.5 信頼性検証 | `shiryo_coder/modules/reliability/`, `shiryo_coder/ui/reliability/` | ✅ Cohen's κ / Fleiss' κ / Krippendorff's α（名義・間隔）・算出単位（文字/文/セグメント）・不一致抽出＋CSV・コーダー研修モード |
 | 3.6 共起可視化 | `shiryo_coder/modules/cooccurrence/`, `shiryo_coder/ui/cooccurrence/` | ✅ 共起マトリクス（重なり/段落/距離 N）・ネットワーク図（vis-network HTML、ノード径=頻度・エッジ太さ=共起）・意味的関係（対立/包含/因果）・ヒートマップ（コード×年代/著者…）・時系列 |
-| 3.7 共同作業 | `shiryo_coder/modules/collaboration/` | ⬜ 未実装 |
+| 3.7 共同作業 | `shiryo_coder/modules/collaboration/`, `shiryo_coder/ui/collaboration/` | ✅ アカウント管理＋役割権限（管理者/コーダー/閲覧者）・変更履歴（audit_log）・承認ワークフロー（下書き→主任承認→確定）・ロック方式（document_lock）・差分共有（コーディング export/import＋コンフリクト報告） |
 | 3.8 エクスポート | `shiryo_coder/modules/export/` | ⬜ 未実装 |

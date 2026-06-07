@@ -161,6 +161,13 @@ CREATE TABLE IF NOT EXISTS code_relation (
 
 CREATE INDEX IF NOT EXISTS idx_relation_project ON code_relation(project_id);
 
+-- ドキュメントの排他ロック（共同作業 C. ロック方式: 仕様書 3.7） --------------
+CREATE TABLE IF NOT EXISTS document_lock (
+    document_id INTEGER PRIMARY KEY REFERENCES document(id) ON DELETE CASCADE,
+    coder_id    INTEGER NOT NULL REFERENCES coder(id) ON DELETE CASCADE,
+    acquired_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- 変更履歴（誰がいつどのセグメントに何をしたか） -----------------------------
 CREATE TABLE IF NOT EXISTS audit_log (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
