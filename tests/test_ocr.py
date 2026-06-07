@@ -245,10 +245,11 @@ def test_pipeline_ingest_and_persist(tmp_path, english_png):
     ).fetchone()
     assert row["title"] == "テスト史料"
     assert row["ocr_engine"] == "tesseract"
-    hits = db.conn.execute(
-        "SELECT rowid FROM document_fts WHERE document_fts MATCH 'HELLO'"
-    ).fetchall()
-    assert len(hits) == 1
+    # 英語ドキュメントは unicode61 索引へルーティングされ、横断検索でヒットする
+    from shiryo_coder.modules.library import LibraryRepository
+
+    results = LibraryRepository(db).search("HELLO")
+    assert [r.id for r in results] == [doc_id]
     db.close()
 
 

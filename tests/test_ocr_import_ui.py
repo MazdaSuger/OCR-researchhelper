@@ -124,6 +124,6 @@ def test_main_window_start_batch_persists_documents(qapp, tmp_path):
 
     rows = db.conn.execute("SELECT title, body FROM document").fetchall()
     assert len(rows) == 2
-    assert window.doc_list.count() == 2
+    assert window.panel.row_count == 2          # ライブラリ一覧に反映
     db.close()
     window.deleteLater()

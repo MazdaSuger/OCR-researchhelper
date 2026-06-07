@@ -18,7 +18,7 @@ def db(tmp_path):
 
 
 def test_initialize_sets_schema_version(db: Database) -> None:
-    assert db.schema_version() == "1"
+    assert db.schema_version() == "2"
 
 
 def test_core_tables_exist(db: Database) -> None:
@@ -66,7 +66,8 @@ def test_fts_search_finds_document(db: Database) -> None:
     )
     db.conn.commit()
 
+    # 言語未指定（NULL）の日本語ドキュメントは trigram 索引へルーティングされる
     hits = db.conn.execute(
-        "SELECT rowid FROM document_fts WHERE document_fts MATCH ?", ("皇祖皇宗",)
+        "SELECT rowid FROM document_fts_tri WHERE document_fts_tri MATCH ?", ("皇祖皇宗",)
     ).fetchall()
     assert len(hits) == 1

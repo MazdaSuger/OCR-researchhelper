@@ -100,6 +100,20 @@ python -m shiryo_coder correct path/to/scan.png
 > 並列 OCR 時の注意: Tesseract は既定で OpenMP により全コアを使うため、エンジン側で
 > `OMP_THREAD_LIMIT=1` を設定し、QThreadPool での健全な並列化を確保しています。
 
+## ライブラリ管理 / 全文検索（仕様書 3.2）
+
+取り込んだ史料は三カラムの史料カタログ（左＝コレクション/タグ、中央＝検索可能な
+一覧、右＝プレビュー）で扱えます。
+
+- **言語別 FTS5 全文検索**: 日本語（CJK）は `trigram`、英語（ラテン）は `unicode61` に
+  自動ルーティングし、検索時は両索引を横断。2 文字以下の漢語は LIKE フォールバック。
+- **メタデータフィルタ / ソート**: 年代・著者・言語・コード付与状況で絞り込み、各列で並び替え。
+- **コレクション / タグ**: 「江戸後期書簡集」などで横断グルーピング。
+- **Zotero 連携**: Better BibTeX / CSL-JSON を取り込み、著者・年・言語・出典を補完。
+- **Obsidian 互換**: プロジェクトフォルダを Vault として走査し、`[[wikilink]]` を保持して取り込み。
+
+検索 API は `shiryo_coder.modules.library.LibraryRepository`（`search()` ほか）です。
+
 ## テスト
 
 ```bash

@@ -90,6 +90,16 @@ class Sentiment:
 
 
 @dataclass
+class Collection:
+    """横断グルーピング（コレクション / タグ）。"""
+
+    id: int | None
+    project_id: int
+    name: str
+    kind: str = "collection"      # collection / tag
+
+
+@dataclass
 class CodeRelation:
     id: int | None
     project_id: int

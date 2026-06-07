@@ -161,27 +161,65 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- 全文検索（FTS5） ------------------------------------------------------------
--- 仕様書 3.2: 日本語は trigram、英語は unicode61。
--- 雛形では CJK にも対応する trigram を既定とし、document.body を外部内容として索引する。
-CREATE VIRTUAL TABLE IF NOT EXISTS document_fts USING fts5(
-    title,
-    body,
-    content='document',
-    content_rowid='id',
-    tokenize='trigram'
+-- コレクション・タグ（横断グルーピング: 仕様書 3.2） -------------------------
+CREATE TABLE IF NOT EXISTS collection (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+    name       TEXT NOT NULL,
+    kind       TEXT NOT NULL DEFAULT 'collection'
+                   CHECK (kind IN ('collection', 'tag')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (project_id, kind, name)
 );
 
--- document_fts を document に追従させるトリガ
-CREATE TRIGGER IF NOT EXISTS document_ai AFTER INSERT ON document BEGIN
-    INSERT INTO document_fts(rowid, title, body) VALUES (new.id, new.title, new.body);
+CREATE TABLE IF NOT EXISTS document_collection (
+    document_id   INTEGER NOT NULL REFERENCES document(id)   ON DELETE CASCADE,
+    collection_id INTEGER NOT NULL REFERENCES collection(id) ON DELETE CASCADE,
+    PRIMARY KEY (document_id, collection_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_doccol_collection ON document_collection(collection_id);
+
+-- 全文検索（FTS5、言語別トークナイザ） ----------------------------------------
+-- 仕様書 3.2: 日本語(CJK)は trigram、英語(ラテン)は unicode61。
+-- 言語に応じて document をどちらかの索引に振り分け（トリガ）、検索は両索引を横断する。
+CREATE VIRTUAL TABLE IF NOT EXISTS document_fts_tri USING fts5(
+    title, body, tokenize='trigram'
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS document_fts_uni USING fts5(
+    title, body, tokenize="unicode61 remove_diacritics 2"
+);
+
+-- 言語ルーティング: 英語系は unicode61、それ以外（日本語・不明）は trigram
+CREATE TRIGGER IF NOT EXISTS document_ai_uni AFTER INSERT ON document
+    WHEN new.language IN ('en', 'eng', 'english') BEGIN
+        INSERT INTO document_fts_uni(rowid, title, body)
+            VALUES (new.id, new.title, new.body);
 END;
+CREATE TRIGGER IF NOT EXISTS document_ai_tri AFTER INSERT ON document
+    WHEN new.language IS NULL OR new.language NOT IN ('en', 'eng', 'english') BEGIN
+        INSERT INTO document_fts_tri(rowid, title, body)
+            VALUES (new.id, new.title, new.body);
+END;
+
 CREATE TRIGGER IF NOT EXISTS document_ad AFTER DELETE ON document BEGIN
-    INSERT INTO document_fts(document_fts, rowid, title, body)
-        VALUES ('delete', old.id, old.title, old.body);
+    DELETE FROM document_fts_tri WHERE rowid = old.id;
+    DELETE FROM document_fts_uni WHERE rowid = old.id;
 END;
-CREATE TRIGGER IF NOT EXISTS document_au AFTER UPDATE ON document BEGIN
-    INSERT INTO document_fts(document_fts, rowid, title, body)
-        VALUES ('delete', old.id, old.title, old.body);
-    INSERT INTO document_fts(rowid, title, body) VALUES (new.id, new.title, new.body);
+
+-- 更新: 複数トリガの発火順序は不定なので、各言語トリガ内で「両索引から削除→
+-- 該当索引へ挿入」を完結させる（WHEN は相互排他なので片方のみ発火）。
+CREATE TRIGGER IF NOT EXISTS document_au_uni AFTER UPDATE ON document
+    WHEN new.language IN ('en', 'eng', 'english') BEGIN
+        DELETE FROM document_fts_tri WHERE rowid = old.id;
+        DELETE FROM document_fts_uni WHERE rowid = old.id;
+        INSERT INTO document_fts_uni(rowid, title, body)
+            VALUES (new.id, new.title, new.body);
+END;
+CREATE TRIGGER IF NOT EXISTS document_au_tri AFTER UPDATE ON document
+    WHEN new.language IS NULL OR new.language NOT IN ('en', 'eng', 'english') BEGIN
+        DELETE FROM document_fts_tri WHERE rowid = old.id;
+        DELETE FROM document_fts_uni WHERE rowid = old.id;
+        INSERT INTO document_fts_tri(rowid, title, body)
+            VALUES (new.id, new.title, new.body);
 END;

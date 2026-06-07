@@ -1,12 +1,10 @@
-"""メインウィンドウシェル。
+"""メインウィンドウ。
 
-QualCoder 風の三カラムレイアウト（フォルダツリー / ドキュメント一覧 / プレビュー）。
-「取り込み」メニューから OCR 取り込みワークフロー（仕様書 3.1）を起動できる。
+三カラムの史料カタログ（左＝コレクション/タグツリー、中央＝検索可能な
+ドキュメント一覧、右＝プレビュー）と、OCR 取り込みワークフロー（仕様書 3.1/3.2）。
 """
 
 from __future__ import annotations
-
-from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
@@ -14,13 +12,10 @@ from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
     QHBoxLayout,
-    QListWidget,
-    QListWidgetItem,
     QMainWindow,
     QMessageBox,
     QSplitter,
     QStatusBar,
-    QTextEdit,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -29,8 +24,11 @@ from PySide6.QtWidgets import (
 
 from shiryo_coder import __app_name__, __version__
 from shiryo_coder.db import Database
+from shiryo_coder.modules.library import LibraryRepository
+from shiryo_coder.ui.library import LibraryPanel
 
 _IMPORT_FILTER = "史料 (*.png *.jpg *.jpeg *.tif *.tiff *.bmp *.pdf *.zip);;すべて (*)"
+_COLLECTION_ROLE = Qt.ItemDataRole.UserRole
 
 
 class MainWindow(QMainWindow):
@@ -39,13 +37,15 @@ class MainWindow(QMainWindow):
     def __init__(self, db: Database) -> None:
         super().__init__()
         self.db = db
+        self.repo = LibraryRepository(db)
+        self.project_id = self._ensure_project()
         self._queues: list = []          # 実行中の OcrQueue を保持（GC 防止）
         self.setWindowTitle(f"{__app_name__}  v{__version__}")
-        self.resize(1200, 760)
+        self.resize(1280, 780)
         self._build_menu()
         self._build_central()
         self._build_status_bar()
-        self._refresh_documents()
+        self._refresh_collections()
 
     # -- 構築 ------------------------------------------------------------------
     def _build_menu(self) -> None:
@@ -54,29 +54,25 @@ class MainWindow(QMainWindow):
         action = QAction("OCR 取り込み…", self)
         action.triggered.connect(self.import_documents)
         import_menu.addAction(action)
+
+        vault_action = QAction("Obsidian Vault を取り込み…", self)
+        vault_action.triggered.connect(self.import_vault)
+        import_menu.addAction(vault_action)
+
         for label in ("コーディング(&C)", "分析(&A)", "エクスポート(&E)", "ヘルプ(&H)"):
             menubar.addMenu(label)
 
     def _build_central(self) -> None:
-        tree = QTreeWidget()
-        tree.setHeaderLabel("プロジェクト")
-        root = QTreeWidgetItem(tree, ["既定プロジェクト"])
-        for name in ("ドキュメント", "コードブック", "コーダー", "メモ"):
-            QTreeWidgetItem(root, [name])
-        tree.expandAll()
+        self.tree = QTreeWidget()
+        self.tree.setHeaderLabel("コレクション")
+        self.tree.currentItemChanged.connect(self._on_collection_selected)
 
-        self.doc_list = QListWidget()
-        self.doc_list.currentItemChanged.connect(self._on_document_selected)
-
-        self.preview = QTextEdit()
-        self.preview.setReadOnly(True)
-        self.preview.setPlaceholderText("ここに選択した史料のプレビューが表示されます。")
+        self.panel = LibraryPanel(self.repo, self.project_id)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(tree)
-        splitter.addWidget(self.doc_list)
-        splitter.addWidget(self.preview)
-        splitter.setSizes([240, 360, 600])
+        splitter.addWidget(self.tree)
+        splitter.addWidget(self.panel)
+        splitter.setSizes([220, 1040])
 
         container = QWidget()
         outer = QHBoxLayout(container)
@@ -86,11 +82,34 @@ class MainWindow(QMainWindow):
 
     def _build_status_bar(self) -> None:
         status = QStatusBar()
-        version = self.db.schema_version()
-        status.showMessage(f"DB: {self.db.db_path}  /  スキーマ v{version}")
+        status.showMessage(f"DB: {self.db.db_path}  /  スキーマ v{self.db.schema_version()}")
         self.setStatusBar(status)
 
-    # -- プロジェクト/ドキュメント ---------------------------------------------
+    # -- コレクションツリー -----------------------------------------------------
+    def _refresh_collections(self) -> None:
+        self.tree.blockSignals(True)
+        self.tree.clear()
+        root = QTreeWidgetItem(self.tree, ["すべての史料"])
+        root.setData(0, _COLLECTION_ROLE, None)
+        for row in self.repo.collections(self.project_id):
+            label = f"{row['name']}（{row['doc_count']}）"
+            item = QTreeWidgetItem(root, [label])
+            item.setData(0, _COLLECTION_ROLE, row["id"])
+        self.tree.expandAll()
+        self.tree.setCurrentItem(root)
+        self.tree.blockSignals(False)
+
+    def _on_collection_selected(self, current, _previous) -> None:
+        if current is None:
+            return
+        self.panel.set_collection(current.data(0, _COLLECTION_ROLE))
+
+    def _reload_library(self) -> None:
+        self.panel.reload_filters()
+        self.panel.refresh()
+        self._refresh_collections()
+
+    # -- プロジェクト -----------------------------------------------------------
     def _ensure_project(self) -> int:
         row = self.db.conn.execute("SELECT id FROM project ORDER BY id LIMIT 1").fetchone()
         if row is not None:
@@ -101,28 +120,18 @@ class MainWindow(QMainWindow):
         self.db.conn.commit()
         return int(row["id"])
 
-    def _refresh_documents(self) -> None:
-        self.doc_list.clear()
-        rows = self.db.conn.execute(
-            "SELECT id, title, language, confidence FROM document ORDER BY id"
-        ).fetchall()
-        for row in rows:
-            conf = f"{row['confidence']:.2f}" if row["confidence"] is not None else "—"
-            item = QListWidgetItem(f"{row['title']}  [{row['language'] or '?'} / {conf}]")
-            item.setData(Qt.ItemDataRole.UserRole, row["id"])
-            self.doc_list.addItem(item)
+    # -- Obsidian Vault 取り込み ------------------------------------------------
+    def import_vault(self) -> None:
+        from shiryo_coder.modules.library import obsidian
 
-    def _on_document_selected(self, current, _previous) -> None:
-        if current is None:
-            self.preview.clear()
+        folder = QFileDialog.getExistingDirectory(self, "Obsidian Vault を選択")
+        if not folder:
             return
-        doc_id = current.data(Qt.ItemDataRole.UserRole)
-        row = self.db.conn.execute(
-            "SELECT body FROM document WHERE id = ?", (doc_id,)
-        ).fetchone()
-        self.preview.setPlainText(row["body"] if row else "")
+        ids = obsidian.import_vault(self.db, self.project_id, folder)
+        self._reload_library()
+        QMessageBox.information(self, "取り込み", f"{len(ids)} 件のノートを取り込みました。")
 
-    # -- 取り込みワークフロー ---------------------------------------------------
+    # -- OCR 取り込みワークフロー -----------------------------------------------
     def import_documents(self) -> None:
         """ファイル選択 → 自動判定の提示 → 設定確認 → バッチ OCR を起動する。"""
         from shiryo_coder.modules.ocr.engines import get_engine
@@ -159,7 +168,6 @@ class MainWindow(QMainWindow):
         from shiryo_coder.modules.ocr.worker import OcrQueue
         from shiryo_coder.ui.ocr_import import BatchProgressWidget
 
-        project_id = self._ensure_project()
         pipeline = OcrPipeline(
             engine=get_engine(settings.engine),
             preprocess_config=settings.preprocess,
@@ -172,8 +180,8 @@ class MainWindow(QMainWindow):
         progress.bind(queue)
 
         def on_finished(_source: str, doc) -> None:
-            pipeline.persist(self.db, project_id, doc)
-            self._refresh_documents()
+            pipeline.persist(self.db, self.project_id, doc)
+            self._reload_library()
 
         queue.signals.finished.connect(on_finished)
 
