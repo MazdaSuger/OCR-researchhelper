@@ -32,6 +32,10 @@ nlp = [
     "sudachipy>=0.6",
     "sudachidict-core>=20240109",
 ]
+ja = [
+    "sudachipy>=0.6",
+    "sudachidict-small>=20240109",   # 形態素解析に十分で core より小さい（配布サイズ削減）
+]
 viz = [
     "networkx>=3.2",
     "pyvis>=0.3.2",

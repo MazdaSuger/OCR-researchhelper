@@ -267,6 +267,29 @@ bash packaging/make_dmg.sh Shiryo-Coder                      # dist/Shiryo-Coder
   `.app` 内に同梱。アプリ側は凍結環境を検知して同梱 tesseract を自動利用するため、
   **利用者は別途 tesseract をインストール不要**。
 - アイコンは `packaging/icon.png`（白・オレンジ・黒で「史」）を元に生成。
+- `packaging/prune_qt.sh` … 未使用 Qt モジュール（WebEngine/Qml/Quick/3D/Charts 等）を
+  バンドルから削除してサイズを削減。
+- ビルド後に **アドホック署名**（`codesign --force --deep --sign -`）して dylib 書き換え
+  後の署名を有効化。
+
+### 「"Shiryo-Coder" は壊れているため開けません」と出る場合
+
+未署名・未公証アプリに macOS が付ける隔離属性が原因で、アプリ自体は壊れていません。
+インストール後にいずれかを実行してください（DMG 内の「はじめにお読みください.txt」にも記載）:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Shiryo-Coder.app
+```
+
+または Finder でアプリを右クリック →「開く」→「開く」。配布時に警告を完全に消すには、
+Apple Developer ID での署名＋公証（notarization）が必要です（CI のアドホック署名ステップを
+Developer ID 署名＋`notarytool` に置き換え）。
+
+### 配布サイズ
+
+既定 extras は `ocr,ja,export`（OCR＋日本語形態素＋Excel）。Sudachi は `sudachidict-small` を
+使用、未使用 Qt モジュールを除去してサイズを抑えています。さらに小さくしたい場合は
+`--no-extras` 相当（コアのみ）でビルドすると OCR/形態素解析なしの軽量版になります。
 
 ## テスト
 

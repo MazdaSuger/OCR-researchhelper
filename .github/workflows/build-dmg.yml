@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       extras:
-        description: "同梱する pip extras（カンマ区切り）。既定はフル機能。"
+        description: "同梱する pip extras（カンマ区切り）。既定はスリム構成（OCR＋日本語形態素＋Excel）。"
         required: false
-        default: "ocr,nlp,viz,export"
+        default: "ocr,ja,export"
   push:
     tags:
       - "v*"
@@ -45,7 +45,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           EXTRAS="${{ github.event.inputs.extras }}"
-          EXTRAS="${EXTRAS:-ocr,nlp,viz,export}"
+          EXTRAS="${EXTRAS:-ocr,ja,export}"
           echo "Installing with extras: [$EXTRAS]"
           pip install -e ".[$EXTRAS]"
           pip install pyinstaller
@@ -56,14 +56,29 @@ jobs:
       - name: Build .app with PyInstaller
         run: pyinstaller --noconfirm --clean packaging/Shiryo-Coder.spec
 
+      - name: Prune unused Qt modules
+        run: bash packaging/prune_qt.sh dist/Shiryo-Coder.app
+
       - name: Bundle tesseract into the .app
         run: bash packaging/bundle_tesseract.sh dist/Shiryo-Coder.app
+
+      - name: Ad-hoc code sign
+        # 署名が無い／dylibbundler で install_name を書き換えると macOS が
+        # 「壊れている」と表示するため、アプリ全体をアドホック署名し直す。
+        # （Developer ID 署名＋notarize を行う場合はこのステップを置き換える）
+        run: |
+          codesign --remove-signature dist/Shiryo-Coder.app 2>/dev/null || true
+          codesign --force --deep --sign - --timestamp=none dist/Shiryo-Coder.app
+          codesign --verify --deep --strict dist/Shiryo-Coder.app || true
 
       - name: Smoke test (app init + bundled tesseract)
         run: |
           APP="dist/Shiryo-Coder.app/Contents/MacOS"
           QT_QPA_PLATFORM=offscreen "$APP/Shiryo-Coder" --init-only
           "$APP/tesseract" --version | head -1     # 同梱 dylib が解決されることを確認
+
+      - name: Report bundle size
+        run: du -sh dist/Shiryo-Coder.app
 
       - name: Package as DMG
         run: bash packaging/make_dmg.sh "Shiryo-Coder-${{ matrix.arch }}"

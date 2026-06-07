@@ -19,7 +19,16 @@ class SudachiTokenizer:
     def __init__(self, *, mode: str = "C", normalized: bool = False) -> None:
         from sudachipy import dictionary, tokenizer
 
-        self._tokenizer = dictionary.Dictionary().create()
+        # 導入済みの辞書（small / core / full のいずれか）を順に試す
+        errors = []
+        for kwargs in ({}, {"dict": "small"}, {"dict": "core"}, {"dict": "full"}):
+            try:
+                self._tokenizer = dictionary.Dictionary(**kwargs).create()
+                break
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+        else:
+            raise RuntimeError(f"Sudachi 辞書を初期化できません: {errors[-1]}")
         self._mode = {
             "A": tokenizer.Tokenizer.SplitMode.A,
             "B": tokenizer.Tokenizer.SplitMode.B,
