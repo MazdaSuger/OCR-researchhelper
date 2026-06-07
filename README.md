@@ -242,6 +242,24 @@ API: `shiryo_coder.modules.collaboration`（`AccountRepository` / `AuditReposito
 API: `shiryo_coder.modules.export`（`to_csv` / `to_excel` / `export_qdpx` /
 `export_vault` / `build_report` / `format_citation` / `heatmap_svg` / `timeseries_svg`）。
 
+## macOS アプリ（.dmg）のビルド
+
+PyInstaller で `.app` を作り、DMG に固めます。GitHub Actions
+（`.github/workflows/build-dmg.yml`）が Intel（macos-13）/ Apple Silicon（macos-14）の
+両方をビルドします。手動実行（Actions の「Run workflow」、`extras` に `ocr,nlp` 等を指定可）か、
+`v*` タグの push で起動し、DMG を成果物＋Release に添付します。
+
+ローカル（macOS）で手動ビルドする場合:
+
+```bash
+pip install -e ".[ocr,nlp,viz,export]" pyinstaller   # 必要な extras を選択
+pyinstaller --noconfirm --clean packaging/Shiryo-Coder.spec
+bash packaging/make_dmg.sh Shiryo-Coder              # dist/Shiryo-Coder.dmg
+```
+
+`packaging/Shiryo-Coder.spec` は `schema.sql` の同梱や、導入済みのオプション依存
+（Sudachi 辞書等）の収集を行います。OCR を使う場合は別途 `tesseract` 本体が必要です。
+
 ## テスト
 
 ```bash

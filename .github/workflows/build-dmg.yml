@@ -1,0 +1,72 @@
+name: Build macOS DMG
+
+# 手動実行（extras を指定可能）と、バージョンタグ push 時に DMG をビルドする。
+on:
+  workflow_dispatch:
+    inputs:
+      extras:
+        description: "同梱する pip extras（カンマ区切り、例: ocr,nlp,viz,export）。空ならコアのみ。"
+        required: false
+        default: ""
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write   # タグビルドで Release へ添付するため
+
+jobs:
+  build:
+    name: ${{ matrix.arch }} (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-13, arch: x86_64 }   # Intel
+          - { runner: macos-14, arch: arm64 }    # Apple Silicon
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          EXTRAS="${{ github.event.inputs.extras }}"
+          if [ -n "$EXTRAS" ]; then
+            echo "Installing with extras: [$EXTRAS]"
+            pip install -e ".[$EXTRAS]"
+          else
+            echo "Installing core only"
+            pip install -e .
+          fi
+          pip install pyinstaller
+
+      - name: Build .app with PyInstaller
+        run: pyinstaller --noconfirm --clean packaging/Shiryo-Coder.spec
+
+      - name: Package as DMG
+        run: bash packaging/make_dmg.sh "Shiryo-Coder-${{ matrix.arch }}"
+
+      - name: Smoke test the bundled app (headless)
+        run: |
+          BIN="dist/Shiryo-Coder.app/Contents/MacOS/Shiryo-Coder"
+          QT_QPA_PLATFORM=offscreen "$BIN" --init-only
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shiryo-Coder-${{ matrix.arch }}
+          path: dist/Shiryo-Coder-${{ matrix.arch }}.dmg
+          if-no-files-found: error
+
+      - name: Attach DMG to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Shiryo-Coder-${{ matrix.arch }}.dmg
