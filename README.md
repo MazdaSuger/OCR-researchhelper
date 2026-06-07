@@ -70,6 +70,9 @@ pip install -e ".[ocr]"
 # 画像 / PDF / ZIP / ディレクトリを取り込み、.md（YAML Front Matter 付き）を出力
 python -m shiryo_coder ingest path/to/scan.png --language ja --out doc.md
 python -m shiryo_coder ingest path/to/scans.pdf --vertical   # 縦書き（PSM 5）
+
+# 手動校正画面（左=元画像＋行ボックス／右=編集可能テキスト、相互ジャンプ）
+python -m shiryo_coder correct path/to/scan.png --language ja
 ```
 
 対応エンジン: `tesseract`（実装済み・ローカル）／ `ndlocr_lite`・`google_vision`・`vision_llm`

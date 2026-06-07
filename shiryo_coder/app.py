@@ -35,6 +35,13 @@ def _build_parser() -> argparse.ArgumentParser:
     ingest.add_argument(
         "--no-preprocess", action="store_true", help="前処理（傾き補正等）を行わない"
     )
+
+    correct = sub.add_parser("correct", help="手動校正画面を開く（GUI）")
+    correct.add_argument("path", help="画像 / PDF / ZIP / ディレクトリ")
+    correct.add_argument("--engine", default="tesseract", help="OCR エンジン名")
+    correct.add_argument("--language", help="言語コード（ja/en など）")
+    correct.add_argument("--vertical", action="store_true", help="縦書きとして処理する")
+    correct.add_argument("--page", type=int, default=0, help="対象ページ（0 始まり）")
     return parser
 
 
@@ -72,10 +79,46 @@ def _run_ingest(args: argparse.Namespace, db: Database) -> int:
     return 0
 
 
+def _run_correct(args: argparse.Namespace) -> int:
+    from PySide6.QtWidgets import QApplication, QMainWindow
+
+    from shiryo_coder.modules.ocr import get_engine
+    from shiryo_coder.modules.ocr.inputs import enumerate_pages
+    from shiryo_coder.modules.ocr.preprocess import PreprocessConfig, preprocess
+    from shiryo_coder.ui.correction import CorrectionWidget
+
+    engine = get_engine(args.engine)
+    if not engine.is_available():
+        print(f"エンジン '{args.engine}' は利用できません。", file=sys.stderr)
+        return 2
+
+    pages = enumerate_pages(args.path)
+    if not (0 <= args.page < len(pages)):
+        print(f"ページ番号が範囲外です（0–{len(pages) - 1}）。", file=sys.stderr)
+        return 2
+
+    # OCR が走った画像をそのまま表示し、ボックス座標を一致させる
+    image = preprocess(pages[args.page].load(), PreprocessConfig())
+    result = engine.recognize(image, vertical=args.vertical, language=args.language)
+
+    app = QApplication(sys.argv[:1])
+    window = QMainWindow()
+    window.setWindowTitle(f"校正: {Path(args.path).name} (p{args.page + 1})")
+    window.setCentralWidget(
+        CorrectionWidget(image, result, metadata={"source_image": str(args.path)})
+    )
+    window.resize(1100, 700)
+    window.show()
+    return app.exec()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
     config = AppConfig.default()
+
+    if args.command == "correct":
+        return _run_correct(args)
 
     db = Database(config.db_path)
     db.initialize()
