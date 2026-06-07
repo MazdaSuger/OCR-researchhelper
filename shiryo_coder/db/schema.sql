@@ -136,6 +136,17 @@ CREATE TABLE IF NOT EXISTS sentiment (
 
 CREATE INDEX IF NOT EXISTS idx_sentiment_document ON sentiment(document_id);
 
+-- プロジェクト同梱のカスタム史料辞書（仕様書 3.4「我が君」「不忠」等に独自極性） --
+CREATE TABLE IF NOT EXISTS sentiment_lexicon (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+    word       TEXT NOT NULL,
+    polarity   REAL NOT NULL,                     -- -1.0 〜 +1.0
+    language   TEXT,                              -- ja / en など
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (project_id, word, language)
+);
+
 -- コード間関係（共起ログ・意味的関係） ----------------------------------------
 -- relation_type 例: cooccurrence / 対立 / 包含 / 因果（仕様書 3.6）
 CREATE TABLE IF NOT EXISTS code_relation (

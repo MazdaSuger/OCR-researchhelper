@@ -73,6 +73,10 @@ class MainWindow(QMainWindow):
         cooccur_action.triggered.connect(self.open_cooccurrence)
         analysis_menu.addAction(cooccur_action)
 
+        sentiment_action = QAction("センチメント分析…", self)
+        sentiment_action.triggered.connect(self.open_sentiment)
+        analysis_menu.addAction(sentiment_action)
+
         for label in ("エクスポート(&E)", "ヘルプ(&H)"):
             menubar.addMenu(label)
 
@@ -182,6 +186,18 @@ class MainWindow(QMainWindow):
         window.resize(820, 620)
         window.show()
         self._reliability_window = window
+        return panel
+
+    def open_sentiment(self) -> "object":
+        from shiryo_coder.ui.sentiment import SentimentPanel
+
+        window = QMainWindow(self)
+        window.setWindowTitle("センチメント分析")
+        panel = SentimentPanel(self.db, self.project_id)
+        window.setCentralWidget(panel)
+        window.resize(860, 640)
+        window.show()
+        self._sentiment_window = window
         return panel
 
     def open_cooccurrence(self) -> "object":

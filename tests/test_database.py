@@ -18,7 +18,7 @@ def db(tmp_path):
 
 
 def test_initialize_sets_schema_version(db: Database) -> None:
-    assert db.schema_version() == "2"
+    assert db.schema_version() == "3"
 
 
 def test_core_tables_exist(db: Database) -> None:

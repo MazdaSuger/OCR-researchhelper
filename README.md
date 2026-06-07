@@ -160,6 +160,22 @@ API: `shiryo_coder.modules.reliability`（`ReliabilityRepository`、
 API: `shiryo_coder.modules.cooccurrence`（`CooccurrenceRepository` /
 `RelationRepository` / `HeatmapRepository` / `build_graph` / `to_html`）。
 
+## センチメント分析（仕様書 3.4）
+
+メニュー「分析 → センチメント分析」で、辞書ベースの極性分析を行います。
+
+- **評価極性辞書**: 高村式（語＋連続値）・東北大式（posi/nega）・VADER 形式の読み込み、
+  内蔵シード辞書（日英）、**プロジェクト同梱のカスタム史料辞書**（「我が君」「不忠」等に
+  独自極性）。
+- **史料語彙の正規化**: 旧字旧仮名 → 新字新仮名（内蔵マップ、ユーザー拡張可）。
+- **解析**: 辞書の最長一致スキャン＋否定反転（oseti 互換）。形態素解析器（MeCab/
+  Sudachi/spaCy）は `tokenizer` に渡して差し替え可能。活用語の解析には形態素解析器を推奨。
+- **分析単位**: 文 / 段落 / コードセグメント / 文書全体。
+- **集計**: 年代別の極性時系列、コード別の極性分布（平均・最小・最大）。
+
+API: `shiryo_coder.modules.sentiment`（`SentimentAnalyzer` / `SentimentDictionary` /
+`SentimentRepository` / `LexiconRepository` / `OldToNewNormalizer`）。
+
 ## テスト
 
 ```bash

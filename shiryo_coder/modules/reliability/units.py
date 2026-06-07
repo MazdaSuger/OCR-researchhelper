@@ -10,6 +10,8 @@ import re
 
 # 文末とみなす区切り（日本語・英語）
 _SENTENCE_BOUNDARY = re.compile(r"[。．！？!?]+|\n+")
+# 段落区切り（空行）
+_PARAGRAPH_BOUNDARY = re.compile(r"\n\s*\n")
 
 Span = tuple[int, int]
 
@@ -31,6 +33,20 @@ def sentence_spans(text: str) -> list[Span]:
     if start < len(text) and text[start:].strip():
         spans.append((start, len(text)))
     return spans
+
+
+def paragraph_spans(text: str) -> list[Span]:
+    """本文を段落（空行区切り）に分割した (start, end) のリストを返す。"""
+    spans: list[Span] = []
+    start = 0
+    for match in _PARAGRAPH_BOUNDARY.finditer(text):
+        end = match.start()
+        if text[start:end].strip():
+            spans.append((start, end))
+        start = match.end()
+    if text[start:].strip():
+        spans.append((start, len(text)))
+    return spans or ([(0, len(text))] if text.strip() else [])
 
 
 def segment_atomic_spans(segments, length: int) -> list[Span]:
