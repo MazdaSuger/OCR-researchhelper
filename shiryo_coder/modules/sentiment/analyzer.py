@@ -48,17 +48,26 @@ class SentimentAnalyzer:
         *,
         normalizer: OldToNewNormalizer | None = None,
         negation_window: int = 4,
-        tokenizer: Callable[[str], list[tuple[str, int]]] | None = None,
+        token_negation_window: int = 3,
+        tokenizer: Callable[[str], list[tuple[str, int]]] | str | None = None,
     ) -> None:
         self.dictionary = dictionary
         self.normalizer = normalizer or OldToNewNormalizer()
         self.negation_window = negation_window
+        self.token_negation_window = token_negation_window
+        # tokenizer="auto" なら言語に応じた形態素解析器を自動採用（無ければ None）
+        if tokenizer == "auto":
+            from shiryo_coder.modules.sentiment.tokenizer import available_tokenizer
+
+            tokenizer = available_tokenizer(dictionary.language)
         self.tokenizer = tokenizer
 
     def score_text(self, text: str) -> SentimentScore:
         normalized = self.normalizer.normalize(text)
         if self.tokenizer is not None:
-            hits = self._score_tokens(self.tokenizer(normalized))
+            # 日本語は否定辞が後置（前方向）、英語は前置（後方向）で否定を探す
+            direction = "backward" if self.dictionary.language == "en" else "forward"
+            hits = self._score_tokens(self.tokenizer(normalized), direction=direction)
         elif self.dictionary.language == "en":
             hits = self._score_english(normalized)
         else:
@@ -96,18 +105,25 @@ class SentimentAnalyzer:
     # -- 英語: 語トークナイズ＋否定の先読み -----------------------------------
     def _score_english(self, text: str) -> list[Hit]:
         tokens = [(m.group(0).lower(), m.start()) for m in _WORD_RE.finditer(text)]
-        return self._score_tokens(tokens)
+        return self._score_tokens(tokens, direction="backward")
 
-    def _score_tokens(self, tokens: list[tuple[str, int]]) -> list[Hit]:
+    def _is_negation_token(self, word: str) -> bool:
+        return word in self.dictionary.negations or word.endswith("n't")
+
+    def _score_tokens(self, tokens: list[tuple[str, int]], *, direction: str) -> list[Hit]:
         hits: list[Hit] = []
-        negations = self.dictionary.negations
+        window = self.token_negation_window
         for idx, (surface, start) in enumerate(tokens):
             base = self.dictionary.words.get(surface)
             if base is None:
                 continue
-            # 直前 negation_window トークンに否定語があれば反転
-            window = tokens[max(0, idx - self.negation_window) : idx]
-            negated = any(w in negations or w.endswith("n't") for w, _ in window)
+            if direction == "forward":
+                # 否定辞は後続（例: 良い→ない）。直後 window トークンを見る
+                neighbors = tokens[idx + 1 : idx + 1 + window]
+            else:
+                # 否定辞は先行（例: not good）
+                neighbors = tokens[max(0, idx - window) : idx]
+            negated = any(self._is_negation_token(w) for w, _ in neighbors)
             hits.append(Hit(surface, -base if negated else base, negated, start))
         return hits
 

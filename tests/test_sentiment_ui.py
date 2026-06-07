@@ -57,6 +57,21 @@ def test_panel_timeseries(qapp, seeded):
     panel.deleteLater()
 
 
+def test_panel_morphology_toggle(qapp, seeded):
+    from shiryo_coder.ui.sentiment import SentimentPanel
+    from shiryo_coder.modules.sentiment import sudachi_available
+
+    db, pid = seeded
+    panel = SentimentPanel(db, pid)
+    if sudachi_available():
+        assert panel.morph_check.isChecked()
+        analyzer = panel._analyzer()
+        assert analyzer.tokenizer is not None
+    panel.morph_check.setChecked(False)
+    assert panel._analyzer().tokenizer is None
+    panel.deleteLater()
+
+
 def test_panel_lexicon_editor(qapp, seeded):
     from shiryo_coder.ui.sentiment import SentimentPanel
 

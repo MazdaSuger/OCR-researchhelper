@@ -12,7 +12,10 @@ from shiryo_coder.modules.sentiment import (
     SentimentAnalyzer,
     SentimentDictionary,
     SentimentRepository,
+    sudachi_available,
 )
+
+_needs_sudachi = pytest.mark.skipif(not sudachi_available(), reason="Sudachi が必要")
 
 
 # -- 正規化 ---------------------------------------------------------------------
@@ -76,6 +79,34 @@ def test_analyze_english():
     assert analyzer.score_text("a great victory and honor").polarity > 0
     neg = analyzer.score_text("this is not good")
     assert neg.hits[-1].negated and neg.polarity < 0
+
+
+# -- 形態素解析（Sudachi） ------------------------------------------------------
+@_needs_sudachi
+def test_morphology_handles_conjugation_and_negation():
+    d = SentimentDictionary.builtin("ja")
+    morph = SentimentAnalyzer(d, tokenizer="auto")
+    plain = SentimentAnalyzer(d)
+
+    # 活用語: 辞書スキャンは取りこぼすが、形態素解析は辞書形で一致
+    assert plain.score_text("嬉しかった").word_count == 0
+    assert morph.score_text("嬉しかった").polarity > 0
+
+    # 活用＋否定: 「良くない」→ 良い(+)が否定で反転
+    neg = morph.score_text("良くない")
+    assert neg.hits and neg.hits[0].negated and neg.polarity < 0
+
+    # 否定で肯定語が反転: 「勝利できなかった」
+    assert morph.score_text("勝利できなかった").polarity < 0
+
+
+@_needs_sudachi
+def test_morphology_auto_tokenizer_selected():
+    a = SentimentAnalyzer(SentimentDictionary.builtin("ja"), tokenizer="auto")
+    assert a.tokenizer is not None
+    # 英語で Sudachi のみ環境なら auto は None（フォールバック）
+    b = SentimentAnalyzer(SentimentDictionary.builtin("en"), tokenizer="auto")
+    assert b.score_text("a great victory").polarity > 0
 
 
 # -- リポジトリ統合 -------------------------------------------------------------

@@ -10,6 +10,7 @@ from statistics import mean
 
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QHBoxLayout,
@@ -29,6 +30,8 @@ from shiryo_coder.modules.sentiment import (
     SentimentAnalyzer,
     SentimentDictionary,
     SentimentRepository,
+    spacy_available,
+    sudachi_available,
 )
 
 _UNITS = [("文", "sentence"), ("段落", "paragraph"), ("セグメント", "segment"), ("文書全体", "document")]
@@ -72,6 +75,15 @@ class SentimentPanel(QWidget):
         for label, value in _DICTS:
             self.dict_combo.addItem(label, value)
 
+        self.morph_check = QCheckBox("形態素解析")
+        morph_ok = sudachi_available() or spacy_available()
+        self.morph_check.setEnabled(morph_ok)
+        self.morph_check.setChecked(morph_ok)
+        self.morph_check.setToolTip(
+            "Sudachi(日)/spaCy(英) で活用語を辞書形に正規化して照合します。"
+            if morph_ok else "形態素解析器が未導入です（pip install で有効化）"
+        )
+
         analyze_btn = QPushButton("解析")
         analyze_btn.clicked.connect(self.analyze)
 
@@ -82,6 +94,7 @@ class SentimentPanel(QWidget):
         controls.addWidget(self.unit_combo)
         controls.addWidget(QLabel("辞書"))
         controls.addWidget(self.dict_combo)
+        controls.addWidget(self.morph_check)
         controls.addWidget(analyze_btn)
 
         self.result_table = QTableWidget(0, 3)
@@ -154,7 +167,8 @@ class SentimentPanel(QWidget):
             dictionary = self.lexicon.merged_with_builtin(self.project_id, "ja")
         else:
             dictionary = SentimentDictionary.builtin("ja")
-        return SentimentAnalyzer(dictionary)
+        tokenizer = "auto" if self.morph_check.isChecked() else None
+        return SentimentAnalyzer(dictionary, tokenizer=tokenizer)
 
     # -- 解析 ------------------------------------------------------------------
     def analyze(self) -> None:
