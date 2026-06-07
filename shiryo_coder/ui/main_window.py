@@ -59,7 +59,12 @@ class MainWindow(QMainWindow):
         vault_action.triggered.connect(self.import_vault)
         import_menu.addAction(vault_action)
 
-        for label in ("コーディング(&C)", "分析(&A)", "エクスポート(&E)", "ヘルプ(&H)"):
+        coding_menu = menubar.addMenu("コーディング(&C)")
+        code_action = QAction("選択した史料をコーディング…", self)
+        code_action.triggered.connect(self.open_coding)
+        coding_menu.addAction(code_action)
+
+        for label in ("分析(&A)", "エクスポート(&E)", "ヘルプ(&H)"):
             menubar.addMenu(label)
 
     def _build_central(self) -> None:
@@ -68,6 +73,7 @@ class MainWindow(QMainWindow):
         self.tree.currentItemChanged.connect(self._on_collection_selected)
 
         self.panel = LibraryPanel(self.repo, self.project_id)
+        self.panel.document_activated.connect(self._open_coding_for)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(self.tree)
@@ -119,6 +125,42 @@ class MainWindow(QMainWindow):
         ).fetchone()
         self.db.conn.commit()
         return int(row["id"])
+
+    # -- コーディング -----------------------------------------------------------
+    def _ensure_coder(self) -> int:
+        row = self.db.conn.execute(
+            "SELECT id FROM coder WHERE project_id = ? ORDER BY id LIMIT 1", (self.project_id,)
+        ).fetchone()
+        if row is not None:
+            return int(row["id"])
+        row = self.db.conn.execute(
+            "INSERT INTO coder(project_id, name, role) VALUES (?, '既定コーダー', 'admin') "
+            "RETURNING id",
+            (self.project_id,),
+        ).fetchone()
+        self.db.conn.commit()
+        return int(row["id"])
+
+    def open_coding(self) -> None:
+        doc_id = self.panel.current_document_id()
+        if doc_id is None:
+            QMessageBox.information(self, "コーディング", "史料を選択してください。")
+            return
+        self._open_coding_for(doc_id)
+
+    def _open_coding_for(self, document_id: int) -> "object":
+        from shiryo_coder.ui.coding import CodingWidget
+
+        self._ensure_coder()
+        window = QMainWindow(self)
+        window.setWindowTitle("コーディング")
+        widget = CodingWidget(self.db, self.project_id)
+        window.setCentralWidget(widget)
+        widget.open_document(document_id)
+        window.resize(1100, 720)
+        window.show()
+        self._coding_window = window
+        return widget
 
     # -- Obsidian Vault 取り込み ------------------------------------------------
     def import_vault(self) -> None:

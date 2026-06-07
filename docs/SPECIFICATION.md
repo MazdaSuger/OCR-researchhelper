@@ -183,7 +183,7 @@ QualCoder の File 一覧を拡張し、史料カタログとして機能:
 | GUI シェル | `shiryo_coder/ui/` | ✅ 三カラム足場 |
 | 3.1 OCR | `shiryo_coder/modules/ocr/`, `shiryo_coder/ui/correction/`, `shiryo_coder/ui/ocr_import/` | ✅ 入力列挙（画像/PDF/ZIP/**マルチページ TIFF**/ディレクトリ）・前処理（**プレビュー個別調整**）・Tesseract 認識・**言語/方向の自動判定（縮小推論→提示→確認）**・**低信頼度の要校正フラグ**・.md/DB 保存・**QThreadPool バッチ＋進捗バー**・手動校正画面（画像↔テキスト相互ジャンプ）・取り込み GUI 一式（API/NDLOCR エンジンは足場） |
 | 3.2 ライブラリ | `shiryo_coder/modules/library/`, `shiryo_coder/ui/library/` | ✅ 言語別 FTS5 横断検索（trigram/unicode61、短語は LIKE フォールバック）・メタデータフィルタ（年代/著者/言語/コード付与状況）・ソート・コレクション/タグ・Zotero(BBT/CSL-JSON)・Obsidian Vault([[wikilink]])・三カラム GUI |
-| 3.3 コーディング | `shiryo_coder/modules/coding/` | ⬜ 未実装 |
+| 3.3 コーディング | `shiryo_coder/modules/coding/`, `shiryo_coder/ui/coding/` | ✅ 階層コードブック（HSL 自動配色・DnD 親子変更・XML 取込）・範囲選択コーディング（重複/部分重なり許容・積層レイヤー）・可視化（下線/ハイライト）・コーダー切替・数字キー駆動・メモ3階層/ジャーナル・AI 支援コーディング（類似度候補） |
 | 3.4 センチメント | `shiryo_coder/modules/sentiment/` | ⬜ 未実装 |
 | 3.5 信頼性検証 | `shiryo_coder/modules/reliability/` | ⬜ 未実装 |
 | 3.6 共起可視化 | `shiryo_coder/modules/cooccurrence/` | ⬜ 未実装 |

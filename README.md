@@ -114,6 +114,24 @@ python -m shiryo_coder correct path/to/scan.png
 
 検索 API は `shiryo_coder.modules.library.LibraryRepository`（`search()` ほか）です。
 
+## コーディング（仕様書 3.3）
+
+一覧で史料をダブルクリック（またはメニュー「コーディング」）すると、コードブック＋
+本文ビューのコーディング画面が開きます。
+
+- **階層コードブック**: 無制限階層、HSL 自動配色＋手動上書き、ドラッグ&ドロップで
+  親子変更、REFI-QDA / QualCoder のコードブック XML 取り込み。
+- **範囲選択コーディング**: 本文をマウス選択 → コード付与。**重複・部分重なりを許容**
+  （1 文字に任意数のコード）。積層レイヤーで可視化。
+- **可視化モード**: 下線色分け / ハイライト塗り。**他コーダーの付与は半透明**でレビュー。
+- **キーボード駆動**: 数字キー 1–9 で頻用コードを選択範囲へ即時付与。
+- **メモ 3 階層**（プロジェクト/ドキュメント/セグメント）とジャーナル。
+- **AI 支援コーディング**: 既存コードの代表セグメントとの類似度で候補を提示（承認制、
+  既定は文字 n-gram のオフライン埋め込み。`Embedder` 差し替えで高精度化可能）。
+
+API: `shiryo_coder.modules.coding`（`CodebookRepository` / `CodingRepository` /
+`MemoRepository` / `suggest_codes` ほか）。
+
 ## テスト
 
 ```bash

@@ -195,3 +195,10 @@ class LibraryPanel(QWidget):
     @property
     def row_count(self) -> int:
         return self.table.rowCount()
+
+    def current_document_id(self) -> int | None:
+        row = self.table.currentRow()
+        if row < 0:
+            return None
+        doc_id = self._row_id(row)
+        return doc_id if doc_id >= 0 else None
