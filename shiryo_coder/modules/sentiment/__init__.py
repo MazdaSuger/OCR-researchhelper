@@ -14,6 +14,15 @@
 
 from shiryo_coder.modules.sentiment.analyzer import SentimentAnalyzer, SentimentScore
 from shiryo_coder.modules.sentiment.dictionary import SentimentDictionary
+from shiryo_coder.modules.sentiment.external import (
+    SOURCES,
+    DictionarySource,
+    install,
+    installed,
+    is_installed,
+    load_combined,
+    load_external,
+)
 from shiryo_coder.modules.sentiment.lexicon import LexiconRepository
 from shiryo_coder.modules.sentiment.normalize import OldToNewNormalizer
 from shiryo_coder.modules.sentiment.sentiment_repo import (
@@ -43,4 +52,11 @@ __all__ = [
     "available_tokenizer",
     "sudachi_available",
     "spacy_available",
+    "SOURCES",
+    "DictionarySource",
+    "install",
+    "installed",
+    "is_installed",
+    "load_combined",
+    "load_external",
 ]

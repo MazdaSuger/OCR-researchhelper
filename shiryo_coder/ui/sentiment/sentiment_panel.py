@@ -26,10 +26,14 @@ from PySide6.QtWidgets import (
 )
 
 from shiryo_coder.modules.sentiment import (
+    SOURCES,
     LexiconRepository,
     SentimentAnalyzer,
     SentimentDictionary,
     SentimentRepository,
+    installed,
+    load_combined,
+    load_external,
     spacy_available,
     sudachi_available,
 )
@@ -71,9 +75,7 @@ class SentimentPanel(QWidget):
         self.unit_combo = QComboBox()
         for label, value in _UNITS:
             self.unit_combo.addItem(label, value)
-        self.dict_combo = QComboBox()
-        for label, value in _DICTS:
-            self.dict_combo.addItem(label, value)
+        self.dict_combo = QComboBox()   # 内容は reload() で（外部辞書の導入状況を反映）
 
         self.morph_check = QCheckBox("形態素解析")
         morph_ok = sudachi_available() or spacy_available()
@@ -157,7 +159,23 @@ class SentimentPanel(QWidget):
             (self.project_id,),
         ):
             self.doc_combo.addItem(row["title"], row["id"])
+        self._reload_dicts()
         self._refresh_lexicon()
+
+    def _reload_dicts(self) -> None:
+        current = self.dict_combo.currentData()
+        self.dict_combo.blockSignals(True)
+        self.dict_combo.clear()
+        for label, value in _DICTS:
+            self.dict_combo.addItem(label, value)
+        ext = [k for k in installed() if SOURCES[k].language == "ja"]
+        if ext:
+            self.dict_combo.addItem("内蔵＋外部（導入済み・日本語）", "ja+external")
+            for key in ext:
+                self.dict_combo.addItem(SOURCES[key].name, f"ext:{key}")
+        idx = self.dict_combo.findData(current)
+        self.dict_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self.dict_combo.blockSignals(False)
 
     def _analyzer(self) -> SentimentAnalyzer:
         choice = self.dict_combo.currentData()
@@ -165,6 +183,13 @@ class SentimentPanel(QWidget):
             dictionary = SentimentDictionary.builtin("en")
         elif choice == "ja+custom":
             dictionary = self.lexicon.merged_with_builtin(self.project_id, "ja")
+        elif choice == "ja+external":
+            # 内蔵＋導入済み外部辞書＋カスタム
+            dictionary = load_combined("ja").merge(
+                self.lexicon.to_dictionary(self.project_id, "ja")
+            )
+        elif isinstance(choice, str) and choice.startswith("ext:"):
+            dictionary = load_external(choice[4:])
         else:
             dictionary = SentimentDictionary.builtin("ja")
         tokenizer = "auto" if self.morph_check.isChecked() else None

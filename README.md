@@ -176,8 +176,32 @@ API: `shiryo_coder.modules.cooccurrence`（`CooccurrenceRepository` /
 - **分析単位**: 文 / 段落 / コードセグメント / 文書全体。
 - **集計**: 年代別の極性時系列、コード別の極性分布（平均・最小・最大）。
 
+### 外部辞書の導入（東北大 / 高村）
+
+東北大 日本語評価極性辞書（用言編/名詞編）と高村 単語感情極性対応表（PN Table）は
+**第三者の著作物で再配布の可否が不明確なため、本リポジトリには同梱しません**。
+利用者が配布元のライセンスに同意のうえ取得し、ダウンロード式インストーラで本アプリの
+形式へ変換・キャッシュします（`~/.shiryo_coder/dictionaries/` に格納、派生物も再配布しないこと）。
+
+```bash
+# 既知の辞書とライセンス・導入状況を表示
+python -m shiryo_coder dict list
+
+# 手元に取得済みのファイルから導入（オフライン）
+python -m shiryo_coder dict install takamura_pn --path ./pn_ja.dic
+python -m shiryo_coder dict install tohoku_wago --path ./wago.121808.pn
+python -m shiryo_coder dict install tohoku_noun --path ./pn.csv.m3.120408.trim
+
+# 配布元 URL から取得（到達可能な環境のみ）
+python -m shiryo_coder dict install takamura_pn
+```
+
+導入後は GUI の辞書選択に「内蔵＋外部（導入済み）」や各辞書が現れ、解析に利用できます。
+利用時は各辞書の引用文献（`dict list` で表示）を明記してください。
+
 API: `shiryo_coder.modules.sentiment`（`SentimentAnalyzer` / `SentimentDictionary` /
-`SentimentRepository` / `LexiconRepository` / `OldToNewNormalizer`）。
+`SentimentRepository` / `LexiconRepository` / `OldToNewNormalizer` / `install` /
+`load_external` / `load_combined`）。
 
 ## 共同作業（仕様書 3.7）
 

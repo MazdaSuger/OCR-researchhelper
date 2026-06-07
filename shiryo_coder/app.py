@@ -42,7 +42,40 @@ def _build_parser() -> argparse.ArgumentParser:
     correct.add_argument("--language", help="言語コード（ja/en など）")
     correct.add_argument("--vertical", action="store_true", help="縦書きとして処理する")
     correct.add_argument("--page", type=int, default=0, help="対象ページ（0 始まり）")
+
+    dic = sub.add_parser("dict", help="評価極性辞書の一覧・導入（センチメント分析）")
+    dic_sub = dic.add_subparsers(dest="dict_command")
+    dic_sub.add_parser("list", help="既知の辞書と導入状況を表示")
+    dic_install = dic_sub.add_parser("install", help="辞書を取得・解析して導入")
+    dic_install.add_argument("key", help="辞書キー（takamura_pn / tohoku_wago / tohoku_noun）")
+    dic_install.add_argument("--path", help="手元のファイル（公式配布元から取得済み）")
+    dic_install.add_argument("--url", help="ダウンロード元 URL（既定は公式 URL）")
     return parser
+
+
+def _run_dict(args: argparse.Namespace) -> int:
+    from shiryo_coder.modules.sentiment import SOURCES, install, is_installed
+
+    if args.dict_command == "install":
+        src = SOURCES.get(args.key)
+        if src is None:
+            print(f"未知の辞書: {args.key}（利用可能: {', '.join(SOURCES)}）", file=sys.stderr)
+            return 2
+        print(f"ライセンス: {src.license}\n引用: {src.citation}", file=sys.stderr)
+        try:
+            out = install(args.key, path=args.path, url=args.url)
+        except Exception as exc:  # noqa: BLE001
+            print(f"導入に失敗しました: {exc}", file=sys.stderr)
+            return 1
+        print(f"導入しました: {out}")
+        return 0
+
+    # 既定（list）
+    for key, src in SOURCES.items():
+        mark = "✓導入済" if is_installed(key) else "・未導入"
+        print(f"[{mark}] {key}: {src.name}")
+        print(f"        ライセンス: {src.license}")
+    return 0
 
 
 def _run_ingest(args: argparse.Namespace, db: Database) -> int:
@@ -119,6 +152,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "correct":
         return _run_correct(args)
+    if args.command == "dict":
+        return _run_dict(args)
 
     db = Database(config.db_path)
     db.initialize()
