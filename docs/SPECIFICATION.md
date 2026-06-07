@@ -186,6 +186,6 @@ QualCoder の File 一覧を拡張し、史料カタログとして機能:
 | 3.3 コーディング | `shiryo_coder/modules/coding/`, `shiryo_coder/ui/coding/` | ✅ 階層コードブック（HSL 自動配色・DnD 親子変更・XML 取込）・範囲選択コーディング（重複/部分重なり許容・積層レイヤー）・可視化（下線/ハイライト）・コーダー切替・数字キー駆動・メモ3階層/ジャーナル・AI 支援コーディング（類似度候補） |
 | 3.4 センチメント | `shiryo_coder/modules/sentiment/` | ⬜ 未実装 |
 | 3.5 信頼性検証 | `shiryo_coder/modules/reliability/`, `shiryo_coder/ui/reliability/` | ✅ Cohen's κ / Fleiss' κ / Krippendorff's α（名義・間隔）・算出単位（文字/文/セグメント）・不一致抽出＋CSV・コーダー研修モード |
-| 3.6 共起可視化 | `shiryo_coder/modules/cooccurrence/` | ⬜ 未実装 |
+| 3.6 共起可視化 | `shiryo_coder/modules/cooccurrence/`, `shiryo_coder/ui/cooccurrence/` | ✅ 共起マトリクス（重なり/段落/距離 N）・ネットワーク図（vis-network HTML、ノード径=頻度・エッジ太さ=共起）・意味的関係（対立/包含/因果）・ヒートマップ（コード×年代/著者…）・時系列 |
 | 3.7 共同作業 | `shiryo_coder/modules/collaboration/` | ⬜ 未実装 |
 | 3.8 エクスポート | `shiryo_coder/modules/export/` | ⬜ 未実装 |

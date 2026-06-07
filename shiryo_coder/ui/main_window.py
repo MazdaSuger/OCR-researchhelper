@@ -69,6 +69,10 @@ class MainWindow(QMainWindow):
         reliability_action.triggered.connect(self.open_reliability)
         analysis_menu.addAction(reliability_action)
 
+        cooccur_action = QAction("共起・関係性可視化…", self)
+        cooccur_action.triggered.connect(self.open_cooccurrence)
+        analysis_menu.addAction(cooccur_action)
+
         for label in ("エクスポート(&E)", "ヘルプ(&H)"):
             menubar.addMenu(label)
 
@@ -178,6 +182,18 @@ class MainWindow(QMainWindow):
         window.resize(820, 620)
         window.show()
         self._reliability_window = window
+        return panel
+
+    def open_cooccurrence(self) -> "object":
+        from shiryo_coder.ui.cooccurrence import CooccurrencePanel
+
+        window = QMainWindow(self)
+        window.setWindowTitle("共起・関係性可視化")
+        panel = CooccurrencePanel(self.db, self.project_id)
+        window.setCentralWidget(panel)
+        window.resize(880, 640)
+        window.show()
+        self._cooccur_window = window
         return panel
 
     # -- Obsidian Vault 取り込み ------------------------------------------------

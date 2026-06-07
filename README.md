@@ -146,6 +146,20 @@ API: `shiryo_coder.modules.coding`（`CodebookRepository` / `CodingRepository` /
 API: `shiryo_coder.modules.reliability`（`ReliabilityRepository`、
 `cohens_kappa` / `fleiss_kappa` / `krippendorff_alpha`）。
 
+## 共起・関係性可視化（仕様書 3.6）
+
+メニュー「分析 → 共起・関係性可視化」で、コード間の関係を可視化します。
+
+- **共起マトリクス**: スコープ（重なり=同一セグメント / 同一段落 / 距離 N 文字以内）を
+  切り替えてコード対の共起回数を集計。
+- **ネットワーク図**: ノード径＝出現頻度、エッジ太さ＝共起回数。vis-network による
+  自己完結 HTML を出力（外部 Python 依存なし。NetworkX があれば相互運用も可能）。
+- **意味的関係の定義**: 「対立 / 包含 / 因果」などをエッジに付与。
+- **ヒートマップ**: コード × 年代 / 著者 / 時代 / 言語のクロス集計、年代別の時系列。
+
+API: `shiryo_coder.modules.cooccurrence`（`CooccurrenceRepository` /
+`RelationRepository` / `HeatmapRepository` / `build_graph` / `to_html`）。
+
 ## テスト
 
 ```bash
