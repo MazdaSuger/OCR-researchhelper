@@ -185,7 +185,7 @@ QualCoder の File 一覧を拡張し、史料カタログとして機能:
 | 3.2 ライブラリ | `shiryo_coder/modules/library/`, `shiryo_coder/ui/library/` | ✅ 言語別 FTS5 横断検索（trigram/unicode61、短語は LIKE フォールバック）・メタデータフィルタ（年代/著者/言語/コード付与状況）・ソート・コレクション/タグ・Zotero(BBT/CSL-JSON)・Obsidian Vault([[wikilink]])・三カラム GUI |
 | 3.3 コーディング | `shiryo_coder/modules/coding/`, `shiryo_coder/ui/coding/` | ✅ 階層コードブック（HSL 自動配色・DnD 親子変更・XML 取込）・範囲選択コーディング（重複/部分重なり許容・積層レイヤー）・可視化（下線/ハイライト）・コーダー切替・数字キー駆動・メモ3階層/ジャーナル・AI 支援コーディング（類似度候補） |
 | 3.4 センチメント | `shiryo_coder/modules/sentiment/` | ⬜ 未実装 |
-| 3.5 信頼性検証 | `shiryo_coder/modules/reliability/` | ⬜ 未実装 |
+| 3.5 信頼性検証 | `shiryo_coder/modules/reliability/`, `shiryo_coder/ui/reliability/` | ✅ Cohen's κ / Fleiss' κ / Krippendorff's α（名義・間隔）・算出単位（文字/文/セグメント）・不一致抽出＋CSV・コーダー研修モード |
 | 3.6 共起可視化 | `shiryo_coder/modules/cooccurrence/` | ⬜ 未実装 |
 | 3.7 共同作業 | `shiryo_coder/modules/collaboration/` | ⬜ 未実装 |
 | 3.8 エクスポート | `shiryo_coder/modules/export/` | ⬜ 未実装 |

@@ -132,6 +132,20 @@ python -m shiryo_coder correct path/to/scan.png
 API: `shiryo_coder.modules.coding`（`CodebookRepository` / `CodingRepository` /
 `MemoRepository` / `suggest_codes` ほか）。
 
+## 信頼性検証（仕様書 3.5）
+
+メニュー「分析 → 信頼性検証」で、複数コーダー間の一致率を算出できます。
+
+- **一致係数**: Cohen's κ（2 コーダー）／ Fleiss' κ・Krippendorff's α（3 名以上、
+  欠損データ・名義/間隔尺度に対応）。係数は手計算した既知値で検証済み。
+- **算出単位**: 文字 / 文 / セグメント（一致判定の粒度を切替）。
+- **不一致抽出**: 争点のある単位を一覧化し、協議用に CSV エクスポート。
+- **コーダー研修モード**: マスターコーディングとの突き合わせで、見落とし（FN）・
+  過剰付与（FP）・一致（TP）を逐次フィードバック。
+
+API: `shiryo_coder.modules.reliability`（`ReliabilityRepository`、
+`cohens_kappa` / `fleiss_kappa` / `krippendorff_alpha`）。
+
 ## テスト
 
 ```bash

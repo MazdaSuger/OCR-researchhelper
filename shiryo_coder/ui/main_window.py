@@ -64,7 +64,12 @@ class MainWindow(QMainWindow):
         code_action.triggered.connect(self.open_coding)
         coding_menu.addAction(code_action)
 
-        for label in ("分析(&A)", "エクスポート(&E)", "ヘルプ(&H)"):
+        analysis_menu = menubar.addMenu("分析(&A)")
+        reliability_action = QAction("信頼性検証（コーダー間一致率）…", self)
+        reliability_action.triggered.connect(self.open_reliability)
+        analysis_menu.addAction(reliability_action)
+
+        for label in ("エクスポート(&E)", "ヘルプ(&H)"):
             menubar.addMenu(label)
 
     def _build_central(self) -> None:
@@ -161,6 +166,19 @@ class MainWindow(QMainWindow):
         window.show()
         self._coding_window = window
         return widget
+
+    # -- 信頼性検証 -------------------------------------------------------------
+    def open_reliability(self) -> "object":
+        from shiryo_coder.ui.reliability import ReliabilityPanel
+
+        window = QMainWindow(self)
+        window.setWindowTitle("信頼性検証")
+        panel = ReliabilityPanel(self.db, self.project_id)
+        window.setCentralWidget(panel)
+        window.resize(820, 620)
+        window.show()
+        self._reliability_window = window
+        return panel
 
     # -- Obsidian Vault 取り込み ------------------------------------------------
     def import_vault(self) -> None:
