@@ -38,6 +38,7 @@ class OcrRunnable(QRunnable):
         self.path = str(path)
         self.signals = signals
         self.ingest_kwargs = ingest_kwargs
+        self.done = False
 
     @Slot()
     def run(self) -> None:
@@ -51,6 +52,8 @@ class OcrRunnable(QRunnable):
             self.signals.finished.emit(self.path, doc)
         except Exception as exc:  # noqa: BLE001 - GUI へ転送するため広く捕捉
             self.signals.failed.emit(self.path, f"{type(exc).__name__}: {exc}")
+        finally:
+            self.done = True
 
 
 class OcrQueue:
@@ -60,14 +63,25 @@ class OcrQueue:
         self.pipeline = pipeline
         self.signals = OcrSignals()
         self.pool = QThreadPool.globalInstance()
+        # start() 後に Python 側の参照が消えると QRunnable とその signals が GC され、
+        # ワーカースレッドでの emit が "Signal source has been deleted" になる。
+        # 実行完了まで参照を保持してそれを防ぐ。
+        self._runnables: list[OcrRunnable] = []
+        self.signals.finished.connect(self._on_runnable_done)
+        self.signals.failed.connect(self._on_runnable_done)
         if max_threads is not None:
             self.pool.setMaxThreadCount(max_threads)
+
+    def _on_runnable_done(self, *_args: Any) -> None:
+        # 完了済みの runnable を保持リストから外す（メインスレッドで配送される）
+        self._runnables = [r for r in self._runnables if not r.done]
 
     def submit(self, path: Path | str, **ingest_kwargs: Any) -> None:
         """1 入力をキューに投入する。"""
         runnable = OcrRunnable(
             self.pipeline, path, signals=self.signals, **ingest_kwargs
         )
+        self._runnables.append(runnable)
         self.pool.start(runnable)
 
     def submit_many(self, paths: list[Path | str], **ingest_kwargs: Any) -> None:

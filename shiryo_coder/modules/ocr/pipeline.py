@@ -11,7 +11,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-from shiryo_coder.modules.ocr.detect import detect_language, detect_orientation
+from shiryo_coder.modules.ocr.detect import (
+    OcrProposal,
+    detect_language,
+    propose_settings,
+)
 from shiryo_coder.modules.ocr.engines.base import OcrEngine
 from shiryo_coder.modules.ocr.inputs import enumerate_pages
 from shiryo_coder.modules.ocr.markdown_writer import write_markdown
@@ -37,11 +41,16 @@ class IngestedDocument:
     metadata: dict[str, Any]
     pages: list[OcrResult] = field(default_factory=list)
     source: str | None = None
+    proposal: OcrProposal | None = None
 
     @property
     def confidence(self) -> float | None:
         confs = [p.confidence for p in self.pages if p.confidence is not None]
         return sum(confs) / len(confs) if confs else None
+
+    @property
+    def page_count(self) -> int:
+        return len(self.pages)
 
 
 @dataclass
@@ -52,6 +61,8 @@ class OcrPipeline:
     preprocess_config: PreprocessConfig = field(default_factory=PreprocessConfig)
     pdf_dpi: int = 200
     page_separator: str = "\n\n"
+    #: この信頼度を下回るページは「要校正」として metadata に印を付ける
+    review_threshold: float = 0.6
 
     def ingest(
         self,
@@ -76,18 +87,19 @@ class OcrPipeline:
         results: list[OcrResult] = []
         resolved_lang = language
         resolved_vertical = vertical
+        proposal: OcrProposal | None = None
 
         for i, page in enumerate(pages):
             image = page.load()
             processed = preprocess(image, self.preprocess_config)
 
-            # 先頭ページで言語/方向を自動判定（明示指定がない場合）
+            # 先頭ページを縮小推論し、言語/方向を提案（明示指定がない項目のみ採用）
             if i == 0 and (resolved_lang is None or resolved_vertical is None):
-                osd = detect_orientation(processed)
-                if resolved_lang is None and osd.language != "und":
-                    resolved_lang = osd.language
+                proposal = propose_settings(processed, self.engine)
+                if resolved_lang is None and proposal.language != "und":
+                    resolved_lang = proposal.language
                 if resolved_vertical is None:
-                    resolved_vertical = False  # 縦書き確定判定はユーザー確認に委ねる
+                    resolved_vertical = proposal.vertical
 
             result = self.engine.recognize(
                 processed,
@@ -108,7 +120,10 @@ class OcrPipeline:
             metadata={},
             pages=results,
             source=str(path),
+            proposal=proposal,
         )
+        conf = doc.confidence
+        needs_review = conf is not None and conf < self.review_threshold
         doc.metadata = {
             "title": doc.title,
             "author": author,
@@ -118,7 +133,9 @@ class OcrPipeline:
             "script": "vertical" if resolved_vertical else "horizontal",
             "source_image": str(path),
             "ocr_engine": self.engine.name,
-            "confidence": round(doc.confidence, 4) if doc.confidence is not None else None,
+            "confidence": round(conf, 4) if conf is not None else None,
+            "pages": total,
+            "needs_review": needs_review or None,
             **(metadata or {}),
         }
         return doc

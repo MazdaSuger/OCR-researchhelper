@@ -181,7 +181,7 @@ QualCoder の File 一覧を拡張し、史料カタログとして機能:
 | --- | --- | --- |
 | データモデル | `shiryo_coder/db/` | ✅ スキーマ・モデル定義・FTS5 |
 | GUI シェル | `shiryo_coder/ui/` | ✅ 三カラム足場 |
-| 3.1 OCR | `shiryo_coder/modules/ocr/`, `shiryo_coder/ui/correction/` | ✅ 入力列挙・前処理・Tesseract 認識・言語判定・.md/DB 保存・QThreadPool ワーカー・**手動校正画面（画像↔テキスト相互ジャンプ）**（API/NDLOCR エンジンは足場） |
+| 3.1 OCR | `shiryo_coder/modules/ocr/`, `shiryo_coder/ui/correction/`, `shiryo_coder/ui/ocr_import/` | ✅ 入力列挙（画像/PDF/ZIP/**マルチページ TIFF**/ディレクトリ）・前処理（**プレビュー個別調整**）・Tesseract 認識・**言語/方向の自動判定（縮小推論→提示→確認）**・**低信頼度の要校正フラグ**・.md/DB 保存・**QThreadPool バッチ＋進捗バー**・手動校正画面（画像↔テキスト相互ジャンプ）・取り込み GUI 一式（API/NDLOCR エンジンは足場） |
 | 3.2 ライブラリ | `shiryo_coder/modules/library/` | ⬜ 未実装 |
 | 3.3 コーディング | `shiryo_coder/modules/coding/` | ⬜ 未実装 |
 | 3.4 センチメント | `shiryo_coder/modules/sentiment/` | ⬜ 未実装 |

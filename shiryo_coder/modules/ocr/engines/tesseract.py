@@ -6,10 +6,16 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 
 from shiryo_coder.modules.ocr.engines.base import EngineUnavailable, OcrEngine
 from shiryo_coder.modules.ocr.result import BoundingBox, OcrResult, OcrWord
+
+# tesseract は既定で OpenMP により全コアを使うため、QThreadPool で並列実行すると
+# スレッド過剰割り当てで激しく遅くなる。各プロセスを単一スレッド化して健全に並列化する。
+# （tesseract 公式が推奨する並列化時の設定）
+os.environ.setdefault("OMP_THREAD_LIMIT", "1")
 
 
 def _to_pil(image):

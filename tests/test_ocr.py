@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import zipfile
 
@@ -25,6 +26,12 @@ ImageFont = pytest.importorskip("PIL.ImageFont")
 _HAS_TESSERACT = shutil.which("tesseract") is not None
 _needs_tesseract = pytest.mark.skipif(not _HAS_TESSERACT, reason="tesseract バイナリが必要")
 
+_CJK_FONT = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+_HAS_CJK = os.path.exists(_CJK_FONT)
+_needs_japanese = pytest.mark.skipif(
+    not (_HAS_TESSERACT and _HAS_CJK), reason="tesseract + CJK フォントが必要"
+)
+
 
 # -- フィクスチャ ----------------------------------------------------------------
 def _text_image(text: str, *, size=(640, 160), font_size=56) -> "Image.Image":
@@ -33,6 +40,22 @@ def _text_image(text: str, *, size=(640, 160), font_size=56) -> "Image.Image":
     font = ImageFont.truetype("DejaVuSans.ttf", font_size)
     draw.text((20, 40), text, fill="black", font=font)
     return img
+
+
+def _jp_horizontal(text: str) -> "np.ndarray":
+    img = Image.new("RGB", (900, 110), "white")
+    ImageDraw.Draw(img).text((15, 28), text, fill="black", font=ImageFont.truetype(_CJK_FONT, 44))
+    return np.ascontiguousarray(np.asarray(img)[:, :, ::-1])
+
+
+def _jp_vertical(chars: str, *, step: int = 95) -> "np.ndarray":
+    height = 40 + len(chars) * step
+    img = Image.new("RGB", (120, height), "white")
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype(_CJK_FONT, 56)
+    for i, ch in enumerate(chars):
+        draw.text((30, 20 + i * step), ch, fill="black", font=font)
+    return np.ascontiguousarray(np.asarray(img)[:, :, ::-1])
 
 
 @pytest.fixture
@@ -116,6 +139,13 @@ def test_unconfigured_api_engines_report_unavailable():
 @_needs_tesseract
 def test_tesseract_reports_available():
     assert available_engines()["tesseract"] is True
+
+
+def test_tesseract_engine_limits_openmp_for_parallelism():
+    # 並列 OCR でのスレッド過剰割り当てを防ぐ設定（engine import の副作用）
+    import shiryo_coder.modules.ocr.engines.tesseract  # noqa: F401
+
+    assert os.environ.get("OMP_THREAD_LIMIT") == "1"
 
 
 # -- 入力の列挙 -----------------------------------------------------------------
@@ -220,3 +250,79 @@ def test_pipeline_ingest_and_persist(tmp_path, english_png):
     ).fetchall()
     assert len(hits) == 1
     db.close()
+
+
+# -- 言語/方向の自動判定（縮小推論） ---------------------------------------------
+@_needs_japanese
+@pytest.mark.parametrize(
+    "factory,exp_lang,exp_vertical",
+    [
+        (lambda: _jp_horizontal("我皇祖皇宗國ヲ肇ムルコト宏遠ニ"), "ja", False),
+        (lambda: _jp_vertical("朕惟フニ我皇祖"), "ja", True),
+    ],
+)
+def test_propose_settings_japanese(factory, exp_lang, exp_vertical):
+    from shiryo_coder.modules.ocr.detect import propose_settings
+
+    proposal = propose_settings(factory(), get_engine("tesseract"))
+    assert proposal.language == exp_lang
+    assert proposal.vertical is exp_vertical
+
+
+@_needs_tesseract
+def test_propose_settings_english():
+    from shiryo_coder.modules.ocr.detect import propose_settings
+
+    img = np.ascontiguousarray(np.asarray(_text_image("MEIJI RESTORATION 1868"))[:, :, ::-1])
+    proposal = propose_settings(img, get_engine("tesseract"))
+    assert proposal.language == "en"
+    assert proposal.vertical is False
+
+
+@_needs_japanese
+def test_pipeline_auto_detects_vertical_japanese(tmp_path):
+    from shiryo_coder.modules.ocr import OcrPipeline
+
+    png = tmp_path / "tate.png"
+    Image.fromarray(_jp_vertical("朕惟フニ我皇祖")[:, :, ::-1]).save(png)
+
+    # language も vertical も指定しない → 先頭ページ推論で決定
+    doc = OcrPipeline(engine=get_engine("tesseract")).ingest(png)
+    assert doc.metadata["language"] == "ja"
+    assert doc.metadata["script"] == "vertical"
+    assert doc.proposal is not None and doc.proposal.vertical is True
+
+
+# -- マルチページ TIFF ----------------------------------------------------------
+def test_enumerate_multipage_tiff(tmp_path):
+    from shiryo_coder.modules.ocr.inputs import enumerate_pages
+
+    tiff_path = tmp_path / "scan.tiff"
+    p1 = _text_image("PAGE ONE")
+    p2 = _text_image("PAGE TWO")
+    p1.save(tiff_path, save_all=True, append_images=[p2])
+
+    pages = enumerate_pages(tiff_path)
+    assert len(pages) == 2
+    assert pages[0].load().shape[2] == 3
+
+
+# -- 低信頼度の要校正フラグ・空ページ -------------------------------------------
+@_needs_tesseract
+def test_low_confidence_flagged_for_review(tmp_path):
+    from shiryo_coder.modules.ocr import OcrPipeline
+
+    # 文字のない白紙 → 信頼度なし、本文空でもクラッシュしない
+    blank = tmp_path / "blank.png"
+    Image.new("RGB", (400, 200), "white").save(blank)
+    doc = OcrPipeline(engine=get_engine("tesseract")).ingest(blank, language="en")
+    assert doc.body == ""
+    assert doc.confidence is None
+    assert doc.metadata["needs_review"] is None      # 信頼度不明はフラグ立てない
+
+    # 高い閾値を課せば、読めたページでも要校正になる
+    pipeline = OcrPipeline(engine=get_engine("tesseract"), review_threshold=1.1)
+    png = tmp_path / "h.png"
+    _text_image("HELLO WORLD").save(png)
+    doc2 = pipeline.ingest(png, language="en")
+    assert doc2.metadata["needs_review"] is True

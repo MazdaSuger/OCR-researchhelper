@@ -58,26 +58,47 @@ python -m shiryo_coder
 
 初回起動時に `~/.shiryo_coder/shiryo.db` が作成され、スキーマが適用されます。
 
-## OCR 取り込み（GUI なし）
+## OCR 取り込み（仕様書 3.1）
 
-OCR 取り込みモジュール（仕様書 3.1）はヘッドレスでも実行できます。
+入力（画像 jpg/png/tiff・**マルチページ TIFF**・PDF・ZIP・ディレクトリ）→ 前処理
+（傾き補正/二値化/ノイズ除去）→ **言語・書字方向の自動判定（先頭ページの縮小推論）**
+→ OCR → 手動校正 → `.md`（YAML Front Matter 付き）/ DB 保存、までを通しで扱います。
 
 ```bash
 # 依存（ローカル OCR）をインストール
 pip install -e ".[ocr]"
-# Tesseract 本体と言語データも別途必要（例: apt install tesseract-ocr tesseract-ocr-jpn）
+# Tesseract 本体と言語データも別途必要:
+#   apt install tesseract-ocr tesseract-ocr-jpn tesseract-ocr-jpn-vert
+# 日本語のフォント（自動判定の検証や描画に）: apt install fonts-noto-cjk
+```
 
-# 画像 / PDF / ZIP / ディレクトリを取り込み、.md（YAML Front Matter 付き）を出力
-python -m shiryo_coder ingest path/to/scan.png --language ja --out doc.md
-python -m shiryo_coder ingest path/to/scans.pdf --vertical   # 縦書き（PSM 5）
+### GUI
+
+```bash
+python -m shiryo_coder        # メニュー「取り込み」→ファイル選択→設定確認→バッチOCR
+```
+
+「取り込み」ダイアログでは、先頭ページの自動判定結果（例「日本語縦書き」）を提示し、
+エンジン・言語・方向・前処理をプレビューで確認/上書きできます。実行は QThreadPool の
+バックグラウンドキューで進捗バー付き、低信頼度ページは「要校正」と表示されます。
+
+### CLI（ヘッドレス）
+
+```bash
+# 言語/方向を指定しなければ先頭ページから自動判定（日本語縦書き等）
+python -m shiryo_coder ingest path/to/scan.png --out doc.md
+python -m shiryo_coder ingest path/to/scans.pdf --language ja --vertical
 
 # 手動校正画面（左=元画像＋行ボックス／右=編集可能テキスト、相互ジャンプ）
-python -m shiryo_coder correct path/to/scan.png --language ja
+python -m shiryo_coder correct path/to/scan.png
 ```
 
 対応エンジン: `tesseract`（実装済み・ローカル）／ `ndlocr_lite`・`google_vision`・`vision_llm`
 （インターフェース足場。SDK・認証情報・モデルの導入で有効化）。利用可否は
 `shiryo_coder.modules.ocr.available_engines()` で確認できます。
+
+> 並列 OCR 時の注意: Tesseract は既定で OpenMP により全コアを使うため、エンジン側で
+> `OMP_THREAD_LIMIT=1` を設定し、QThreadPool での健全な並列化を確保しています。
 
 ## テスト
 

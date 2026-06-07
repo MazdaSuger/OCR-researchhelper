@@ -15,17 +15,41 @@ import cv2
 import numpy as np
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp", ".webp"}
+TIFF_SUFFIXES = {".tif", ".tiff"}      # マルチページの可能性あり
 PDF_SUFFIXES = {".pdf"}
 ZIP_SUFFIXES = {".zip"}
 
 
+def _pil_to_bgr(frame) -> np.ndarray:
+    rgb = np.asarray(frame.convert("RGB"))
+    return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+
+
 def _imread(path: Path) -> np.ndarray:
-    """非 ASCII パスにも耐える画像読み込み（BGR）。"""
+    """非 ASCII パスにも耐える画像読み込み（BGR）。cv2 失敗時は PIL にフォールバック。"""
     data = np.fromfile(str(path), dtype=np.uint8)
     image = cv2.imdecode(data, cv2.IMREAD_COLOR)
-    if image is None:
-        raise ValueError(f"画像を読み込めません: {path}")
-    return image
+    if image is not None:
+        return image
+    try:
+        from PIL import Image
+
+        with Image.open(path) as im:
+            return _pil_to_bgr(im)
+    except Exception as exc:  # noqa: BLE001
+        raise ValueError(f"画像を読み込めません: {path}") from exc
+
+
+def _load_tiff(path: Path, *, source: str | None = None) -> list["PageImage"]:
+    """TIFF を 1 フレーム = 1 ページに展開する（マルチページ対応）。"""
+    from PIL import Image, ImageSequence
+
+    src = source or str(path)
+    pages: list[PageImage] = []
+    with Image.open(path) as im:
+        for i, frame in enumerate(ImageSequence.Iterator(im)):
+            pages.append(PageImage(source=src, page_index=i, _array=_pil_to_bgr(frame)))
+    return pages
 
 
 def _imdecode(buffer: bytes) -> np.ndarray:
@@ -86,7 +110,12 @@ def _expand_zip(path: Path, *, dpi: int) -> list[PageImage]:
             suffix = member.suffix.lower()
             if name.endswith("/"):
                 continue
-            if suffix in IMAGE_SUFFIXES:
+            if suffix in TIFF_SUFFIXES:
+                with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as tmp:
+                    tmp.write(zf.read(name))
+                    tmp.flush()
+                    pages.extend(_load_tiff(Path(tmp.name), source=f"{path}!{name}"))
+            elif suffix in IMAGE_SUFFIXES:
                 array = _imdecode(zf.read(name))
                 pages.append(PageImage(source=f"{path}!{name}", page_index=0, _array=array))
             elif suffix in PDF_SUFFIXES:
@@ -119,6 +148,8 @@ def enumerate_pages(path: Path | str, *, pdf_dpi: int = 200) -> list[PageImage]:
         return pages
 
     suffix = path.suffix.lower()
+    if suffix in TIFF_SUFFIXES:
+        return _load_tiff(path)
     if suffix in IMAGE_SUFFIXES:
         return [PageImage(source=str(path), page_index=0, path=path)]
     if suffix in PDF_SUFFIXES:
