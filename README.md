@@ -3,8 +3,9 @@
 日英混在・縦横書き・大規模史料コーパスに対応した、研究室共有型の史料テキスト分析統合ソフトウェア。
 QualCoder の操作感をベースに、OCR 取り込みから質的コーディング・センチメント分析・信頼性検証・共起可視化までを一気通貫で扱うことを目指します。
 
-> ⚠️ 本リポジトリは現在 **プロジェクト雛形（スキャフォールド）** の段階です。
-> データモデル・モジュール境界・起動可能な最小 GUI シェルを定義しています。各モジュールの本実装はこれからです。
+> 仕様書 3.1〜3.8 の全モジュール（OCR 取り込み・ライブラリ/検索・コーディング・
+> センチメント分析・信頼性検証・共起可視化・共同作業・エクスポート）を実装済みです。
+> 実装状況の一覧は [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) 末尾の表を参照してください。
 
 詳細な機能仕様は [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) を参照してください。
 
@@ -193,6 +194,23 @@ API: `shiryo_coder.modules.sentiment`（`SentimentAnalyzer` / `SentimentDictiona
 
 API: `shiryo_coder.modules.collaboration`（`AccountRepository` / `AuditRepository` /
 `ApprovalWorkflow` / `LockRepository` / `export_codings` / `import_codings`）。
+
+## エクスポート・連携（仕様書 3.8）
+
+メニュー「エクスポート」から各種出力を行います。
+
+- **CSV / Excel**: コード集計表・セグメント一覧・メタデータ表・感情極性スコア
+  （Excel は `pip install -e ".[export]"` の openpyxl で複数シート出力）。
+- **REFI-QDA `.qdpx`**: MAXQDA / NVivo / ATLAS.ti / QualCoder 互換の交換形式
+  （ZIP + project.qde、コード階層・色・コーディング・ユーザーを保持）。
+- **学術引用形式**: セグメント引用文を APA / Chicago / SIST02（人文系日本）で生成。
+- **Obsidian Vault**: コード=タグ、セグメント=callout、コード関係=`[[wikilink]]` で再構築。
+- **HTML レポート**: コード階層・代表例・統計をまとめた自己完結 HTML。
+- **SVG 可視化**: ヒートマップ（コード×メタデータ）・感情極性の時系列（外部依存なし）。
+  共起ネットワークは vis-network HTML（3.6）で出力。
+
+API: `shiryo_coder.modules.export`（`to_csv` / `to_excel` / `export_qdpx` /
+`export_vault` / `build_report` / `format_citation` / `heatmap_svg` / `timeseries_svg`）。
 
 ## テスト
 

@@ -36,6 +36,9 @@ viz = [
     "networkx>=3.2",
     "pyvis>=0.3.2",
 ]
+export = [
+    "openpyxl>=3.1",
+]
 dev = [
     "pytest>=8.0",
     "ruff>=0.4",

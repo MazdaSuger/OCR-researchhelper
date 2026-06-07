@@ -82,8 +82,12 @@ class MainWindow(QMainWindow):
         collab_action.triggered.connect(self.open_collaboration)
         collab_menu.addAction(collab_action)
 
-        for label in ("エクスポート(&E)", "ヘルプ(&H)"):
-            menubar.addMenu(label)
+        export_menu = menubar.addMenu("エクスポート(&E)")
+        export_action = QAction("CSV / Excel / .qdpx / Obsidian / HTML / SVG…", self)
+        export_action.triggered.connect(self.open_export)
+        export_menu.addAction(export_action)
+
+        menubar.addMenu("ヘルプ(&H)")
 
     def _build_central(self) -> None:
         self.tree = QTreeWidget()
@@ -191,6 +195,18 @@ class MainWindow(QMainWindow):
         window.resize(820, 620)
         window.show()
         self._reliability_window = window
+        return panel
+
+    def open_export(self) -> "object":
+        from shiryo_coder.ui.export import ExportPanel
+
+        window = QMainWindow(self)
+        window.setWindowTitle("エクスポート")
+        panel = ExportPanel(self.db, self.project_id)
+        window.setCentralWidget(panel)
+        window.resize(560, 420)
+        window.show()
+        self._export_window = window
         return panel
 
     def open_collaboration(self) -> "object":

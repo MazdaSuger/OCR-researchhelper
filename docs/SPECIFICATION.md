@@ -188,4 +188,4 @@ QualCoder の File 一覧を拡張し、史料カタログとして機能:
 | 3.5 信頼性検証 | `shiryo_coder/modules/reliability/`, `shiryo_coder/ui/reliability/` | ✅ Cohen's κ / Fleiss' κ / Krippendorff's α（名義・間隔）・算出単位（文字/文/セグメント）・不一致抽出＋CSV・コーダー研修モード |
 | 3.6 共起可視化 | `shiryo_coder/modules/cooccurrence/`, `shiryo_coder/ui/cooccurrence/` | ✅ 共起マトリクス（重なり/段落/距離 N）・ネットワーク図（vis-network HTML、ノード径=頻度・エッジ太さ=共起）・意味的関係（対立/包含/因果）・ヒートマップ（コード×年代/著者…）・時系列 |
 | 3.7 共同作業 | `shiryo_coder/modules/collaboration/`, `shiryo_coder/ui/collaboration/` | ✅ アカウント管理＋役割権限（管理者/コーダー/閲覧者）・変更履歴（audit_log）・承認ワークフロー（下書き→主任承認→確定）・ロック方式（document_lock）・差分共有（コーディング export/import＋コンフリクト報告） |
-| 3.8 エクスポート | `shiryo_coder/modules/export/` | ⬜ 未実装 |
+| 3.8 エクスポート | `shiryo_coder/modules/export/`, `shiryo_coder/ui/export/` | ✅ CSV/Excel（コード集計・セグメント・メタデータ・感情）・REFI-QDA .qdpx（自前パーサで往復検証）・学術引用（APA/Chicago/SIST02）・Obsidian Vault（タグ/callout/リンク）・HTML レポート・SVG（ヒートマップ/時系列） |
