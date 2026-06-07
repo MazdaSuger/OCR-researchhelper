@@ -101,6 +101,12 @@ python -m shiryo_coder correct path/to/scan.png
 > 並列 OCR 時の注意: Tesseract は既定で OpenMP により全コアを使うため、エンジン側で
 > `OMP_THREAD_LIMIT=1` を設定し、QThreadPool での健全な並列化を確保しています。
 
+## 外観（テーマ）
+
+GUI は白・オレンジ・黒のモダンテーマで統一しています（`shiryo_coder/ui/theme.py`）。
+グローバル QSS を QApplication に適用し全ウィジェットへカスケードするため、配色は
+`PALETTE` の一箇所で変更できます（オレンジ＝主アクセント、白＝背景、黒＝文字）。
+
 ## ライブラリ管理 / 全文検索（仕様書 3.2）
 
 取り込んだ史料は三カラムの史料カタログ（左＝コレクション/タグ、中央＝検索可能な

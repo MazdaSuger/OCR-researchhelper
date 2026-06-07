@@ -134,7 +134,10 @@ def _run_correct(args: argparse.Namespace) -> int:
     image = preprocess(pages[args.page].load(), PreprocessConfig())
     result = engine.recognize(image, vertical=args.vertical, language=args.language)
 
+    from shiryo_coder.ui.theme import apply_theme
+
     app = QApplication(sys.argv[:1])
+    apply_theme(app)
     window = QMainWindow()
     window.setWindowTitle(f"校正: {Path(args.path).name} (p{args.page + 1})")
     window.setCentralWidget(
@@ -169,8 +172,10 @@ def main(argv: list[str] | None = None) -> int:
         from PySide6.QtWidgets import QApplication
 
         from shiryo_coder.ui.main_window import MainWindow
+        from shiryo_coder.ui.theme import apply_theme
 
         app = QApplication(sys.argv[:1])
+        apply_theme(app)
         window = MainWindow(db)
         window.show()
         return app.exec()
